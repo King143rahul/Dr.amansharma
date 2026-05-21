@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-academic-bg: #ffffff;
+  --color-academic-surface: #f3f7f5;
+  --color-academic-border: #cbd5d1;
+  --color-academic-text: #07120f;
+  --color-academic-muted: #34443f;
+  --color-academic-accent: #07120f;
+  --color-academic-brand: #05603f;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+}
+
+@layer base {
+  body {
+    @apply bg-academic-bg text-academic-text font-sans antialiased overflow-x-hidden selection:bg-academic-brand/15 selection:text-academic-brand;
+    font-size: 17px;
+    font-weight: 500;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight text-academic-accent;
+  }
+}
+
+@layer utilities {
+  .editorial-card {
+    @apply bg-white border border-academic-border shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:border-academic-brand/40;
+  }
+  .editorial-heading {
+    @apply font-serif font-bold text-academic-accent;
+  }
+  .editorial-subheading {
+    @apply font-sans font-bold text-academic-brand uppercase tracking-wider text-sm mb-3;
+  }
+
+  .chemistry-grid {
+    background-image:
+      linear-gradient(rgba(5, 96, 63, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(5, 96, 63, 0.1) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+}
