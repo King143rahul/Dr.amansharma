@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Atom } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NavHeader from './ui/nav-header';
 
@@ -8,7 +8,6 @@ const NAV_LINKS = [
   { name: 'Home', href: '/' },
   { name: 'Research', href: '/research' },
   { name: 'Startup', href: '/startup' },
-  { name: 'Teaching', href: '/teaching' },
   { name: 'Gallery', href: '/gallery' },
   { name: 'Contact', href: '/contact' },
 ];
@@ -16,11 +15,17 @@ const NAV_LINKS = [
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
+      
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalScroll > 0) {
+        setScrollProgress((window.scrollY / totalScroll) * 100);
+      }
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -34,18 +39,26 @@ export const Navbar = () => {
   return (
     <motion.header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled ? 'bg-academic-bg border-b border-academic-border py-4' : 'bg-transparent py-6'
+        isScrolled ? 'bg-white/80 backdrop-blur-lg border-b border-academic-border/70 py-3 shadow-md' : 'bg-transparent py-6'
       }`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="max-w-6xl mx-auto px-6 lg:px-8 flex items-center justify-between">
+      {/* Scroll Progress Bar */}
+      <div 
+        className="absolute top-0 left-0 h-0.5 bg-gradient-to-r from-academic-brand via-emerald-500 to-teal-400 transition-all duration-100 ease-out z-50" 
+        style={{ width: `${scrollProgress}%` }}
+      />
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
         <Link 
           to="/"
-          className="text-xl font-serif font-bold text-academic-accent cursor-pointer"
+          className="min-w-0 text-xl font-serif font-bold text-academic-accent cursor-pointer flex items-center gap-2 group/logo"
         >
-          Dr. Aman Sharma
+          <div className="text-academic-brand group-hover/logo:rotate-360 transition-transform duration-1000 ease-in-out">
+            <Atom size={24} className="animate-[spin_12s_linear_infinite]" strokeWidth={1.8} />
+          </div>
+          <span className="truncate tracking-tight text-lg sm:text-xl">Dr. Aman Sharma</span>
         </Link>
 
         {/* Desktop Nav */}

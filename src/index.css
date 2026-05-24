@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap";
 @import "tailwindcss";
 
 @theme {
@@ -10,8 +10,8 @@
   --color-academic-accent: #07120f;
   --color-academic-brand: #05603f;
 
-  --font-sans: 'Inter', sans-serif;
-  --font-serif: 'Playfair Display', serif;
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Playfair Display", serif;
 }
 
 @layer base {
@@ -19,6 +19,18 @@
     @apply bg-academic-bg text-academic-text font-sans antialiased overflow-x-hidden selection:bg-academic-brand/15 selection:text-academic-brand;
     font-size: 17px;
     font-weight: 500;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
+
+  input, textarea, select, button {
+    font: inherit;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -42,5 +54,19 @@
       linear-gradient(rgba(5, 96, 63, 0.1) 1px, transparent 1px),
       linear-gradient(90deg, rgba(5, 96, 63, 0.1) 1px, transparent 1px);
     background-size: 48px 48px;
+  }
+
+  @media (max-width: 640px) {
+    body {
+      font-size: 16px;
+    }
+
+    .editorial-subheading {
+      @apply text-xs;
+    }
+
+    .chemistry-grid {
+      background-size: 32px 32px;
+    }
   }
 }

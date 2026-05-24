@@ -1,0 +1,1784 @@
+import React, { useEffect, useState, useRef } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { auth, db, storage } from "../lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff } from "lucide-react";
+
+const getPhotosStoragePath = (url: string) => {
+  try {
+    const parsedUrl = new URL(url);
+    const marker = "/object/public/Photos/";
+    const markerIndex = parsedUrl.pathname.indexOf(marker);
+    if (markerIndex === -1) return "";
+    return decodeURIComponent(parsedUrl.pathname.slice(markerIndex + marker.length));
+  } catch {
+    const marker = "/Photos/";
+    const markerIndex = url.indexOf(marker);
+    return markerIndex === -1 ? "" : decodeURIComponent(url.slice(markerIndex + marker.length));
+  }
+};
+
+const normalizePublicationTitle = (title: string) =>
+  title
+    .replace(/<[^>]*>/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Simple loader component
+const Loader = () => (
+  <div className="flex items-center justify-center py-8">
+    <svg className="animate-spin h-8 w-8 text-academic-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+  </div>
+);
+
+const ConfirmDialog = ({
+  title,
+  message,
+  confirmLabel = "Delete",
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => (
+  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+    <div className="w-full max-w-sm rounded-xl border border-academic-border bg-white p-6 shadow-2xl">
+      <h3 className="editorial-heading mb-3 text-2xl">{title}</h3>
+      <p className="mb-6 text-sm font-medium leading-relaxed text-academic-muted">{message}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-academic-border px-4 py-2 font-bold text-academic-accent hover:bg-academic-surface"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700"
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+type RichTextElement = HTMLInputElement | HTMLTextAreaElement;
+
+const applyTextFormat = (
+  element: RichTextElement | null,
+  value: string,
+  onChange: (value: string) => void,
+  openTag: string,
+  closeTag: string,
+) => {
+  const start = element?.selectionStart ?? value.length;
+  const end = element?.selectionEnd ?? start;
+  const selected = value.slice(start, end);
+  const nextValue = `${value.slice(0, start)}${openTag}${selected}${closeTag}${value.slice(end)}`;
+
+  onChange(nextValue);
+  window.requestAnimationFrame(() => {
+    element?.focus();
+    const nextStart = start + openTag.length;
+    const nextEnd = nextStart + selected.length;
+    element?.setSelectionRange(nextStart, nextEnd);
+  });
+};
+
+const RichTextToolbar = ({
+  targetRef,
+  value,
+  onChange,
+}: {
+  targetRef: React.RefObject<RichTextElement | null>;
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-academic-border bg-academic-surface/60 p-2">
+    <button
+      type="button"
+      onClick={() => applyTextFormat(targetRef.current, value, onChange, "<strong>", "</strong>")}
+      className="flex h-9 w-9 items-center justify-center rounded border border-academic-border bg-white text-academic-accent hover:border-academic-brand hover:text-academic-brand"
+      aria-label="Bold selected text"
+      title="Bold selected text"
+    >
+      <Bold size={16} />
+    </button>
+    <button
+      type="button"
+      onClick={() => applyTextFormat(targetRef.current, value, onChange, "<em>", "</em>")}
+      className="flex h-9 w-9 items-center justify-center rounded border border-academic-border bg-white text-academic-accent hover:border-academic-brand hover:text-academic-brand"
+      aria-label="Italic selected text"
+      title="Italic selected text"
+    >
+      <Italic size={16} />
+    </button>
+    <label
+      className="flex h-9 items-center gap-2 rounded border border-academic-border bg-white px-3 text-sm font-bold text-academic-accent hover:border-academic-brand hover:text-academic-brand"
+      title="Color selected text"
+    >
+      <Palette size={16} />
+      <input
+        type="color"
+        className="h-5 w-6 cursor-pointer border-0 bg-transparent p-0"
+        onChange={(event) =>
+          applyTextFormat(
+            targetRef.current,
+            value,
+            onChange,
+            `<span style="color: ${event.target.value}">`,
+            "</span>",
+          )
+        }
+        aria-label="Color selected text"
+      />
+    </label>
+  </div>
+);
+
+const RichTextField = ({
+  label,
+  value,
+  onChange,
+  multiline = false,
+  rows = 2,
+  placeholder,
+  className = "",
+}: {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+  rows?: number;
+  placeholder?: string;
+  className?: string;
+}) => {
+  const fieldRef = useRef<RichTextElement | null>(null);
+  const fieldClassName = `w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text ${className}`;
+
+  return (
+    <div>
+      {label && <label className="block text-sm font-bold text-academic-muted mb-2">{label}</label>}
+      <RichTextToolbar targetRef={fieldRef} value={value} onChange={onChange} />
+      {multiline ? (
+        <textarea
+          ref={fieldRef as React.RefObject<HTMLTextAreaElement>}
+          rows={rows}
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          className={fieldClassName}
+        />
+      ) : (
+        <input
+          ref={fieldRef as React.RefObject<HTMLInputElement>}
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          className={fieldClassName}
+        />
+      )}
+    </div>
+  );
+};
+
+// Authentication guard hook
+function useCurrentUser() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  
+  useEffect(() => {
+    // 1. Get initial session
+    auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    // 2. Listen for auth changes
+    const { data: { subscription } } = auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+  return { user, authLoading };
+}
+
+// Navigation items
+const navItems = [
+  { name: "General Settings", path: "general" },
+  { name: "Biography", path: "bio" },
+  { name: "Research Interests", path: "research" },
+  { name: "Startup", path: "startup" },
+  { name: "Publications", path: "publications" },
+  { name: "Media Gallery", path: "media" },
+  { name: "Form Submissions", path: "submissions" },
+  { name: "Change Password", path: "password" },
+];
+
+const Sidebar = ({ selected }: { selected: string }) => {
+  const navigate = useNavigate();
+  return (
+    <nav className="bg-white border-r border-academic-border w-64 flex-shrink-0 hidden md:flex flex-col h-screen p-6 shadow-sm z-10">
+      <h2 className="editorial-heading text-2xl mb-8 text-academic-brand">Admin Panel</h2>
+      <ul className="space-y-2 flex-1">
+        {navItems.map((item) => (
+          <li key={item.path}>
+            <button
+              onClick={() => navigate(`/admin/${item.path}`)}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-all font-medium ${
+                selected === item.path 
+                  ? "bg-academic-brand text-white shadow-sm" 
+                  : "text-academic-muted hover:bg-academic-surface hover:text-academic-brand"
+              }`}
+            >
+              {item.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        onClick={() => auth.signOut()}
+        className="mt-4 flex items-center justify-center w-full px-4 py-3 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+      >
+        <LogOut className="mr-2" size={18} />
+        Logout
+      </button>
+    </nav>
+  );
+};
+
+const MobileTabs = ({ selected }: { selected: string }) => {
+  const navigate = useNavigate();
+  return (
+    <div className="md:hidden bg-white border-b border-academic-border px-4 py-3 flex items-center justify-between gap-3 shadow-sm sticky top-0 z-10">
+      <select
+        value={selected}
+        onChange={(e) => navigate(`/admin/${e.target.value}`)}
+        className="min-w-0 flex-1 bg-academic-surface text-academic-text border border-academic-border rounded-lg p-2.5 text-sm font-medium focus:ring-1 focus:ring-academic-brand focus:outline-none"
+      >
+        {navItems.map((item) => (
+          <option key={item.path} value={item.path}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+      <button onClick={() => auth.signOut()} className="flex min-h-11 min-w-11 items-center justify-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" aria-label="Logout">
+        <LogOut size={20} />
+      </button>
+    </div>
+  );
+};
+
+// ----------------------- Section Editors ----------------------- //
+
+const GeneralSettingsEditor = () => {
+  const [heroSubtitle, setHeroSubtitle] = useState("");
+  const [heroRoles, setHeroRoles] = useState("");
+  const [heroDesc, setHeroDesc] = useState("");
+  const [aboutSubheading, setAboutSubheading] = useState("");
+  
+  // Stats
+  const [experienceValue, setExperienceValue] = useState("");
+  const [patentsValue, setPatentsValue] = useState("");
+  const [publicationsValue, setPublicationsValue] = useState("");
+  const [grantsValue, setGrantsValue] = useState("");
+  const [conferencesValue, setConferencesValue] = useState("");
+
+  // Contact
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactLinkedIn, setContactLinkedIn] = useState("");
+  const [contactOrcid, setContactOrcid] = useState("");
+  const [contactWhatsApp, setContactWhatsApp] = useState("");
+
+  const [profilePicUrl, setProfilePicUrl] = useState("");
+  const [profileUploading, setProfileUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await db
+        .from('general_settings')
+        .select('*')
+        .eq('id', 'settings')
+        .single();
+      
+      if (!error && data) {
+        setHeroSubtitle(data.heroSubtitle ?? "Sustainability Innovator & Researcher");
+        setHeroRoles(data.heroRoles ?? "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours");
+        setHeroDesc(data.heroDesc ?? "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.");
+        setAboutSubheading(data.aboutSubheading ?? "Pioneering the intersection of nanotechnology and green chemistry.");
+        setExperienceValue(data.experienceValue ?? "7+");
+        setPatentsValue(data.patentsValue ?? "Multiple");
+        setPublicationsValue(data.publicationsValue ?? "15+");
+        setGrantsValue(data.grantsValue ?? "2");
+        setConferencesValue(data.conferencesValue ?? "10+");
+        setContactEmail(data.contactEmail ?? "amansharmapdh@gmail.com");
+        setContactLinkedIn(data.contactLinkedIn ?? "https://www.linkedin.com/in/amansharmaphd/");
+        setContactOrcid(data.contactOrcid ?? "https://orcid.org/0000-0000-0000-0000");
+        setContactWhatsApp(data.contactWhatsApp ?? "");
+        setProfilePicUrl(data.profilePicUrl ?? "");
+      }
+      setLoading(false);
+    };
+
+    fetchSettings();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_settings_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'general_settings', filter: 'id=eq.settings' },
+        (payload) => {
+          const data = payload.new as any;
+          if (data) {
+            setHeroSubtitle(data.heroSubtitle ?? "");
+            setHeroRoles(data.heroRoles ?? "");
+            setHeroDesc(data.heroDesc ?? "");
+            setAboutSubheading(data.aboutSubheading ?? "");
+            setExperienceValue(data.experienceValue ?? "");
+            setPatentsValue(data.patentsValue ?? "");
+            setPublicationsValue(data.publicationsValue ?? "");
+            setGrantsValue(data.grantsValue ?? "");
+            setConferencesValue(data.conferencesValue ?? "");
+            setContactEmail(data.contactEmail ?? "");
+            setContactLinkedIn(data.contactLinkedIn ?? "");
+            setContactOrcid(data.contactOrcid ?? "");
+            setContactWhatsApp(data.contactWhatsApp ?? "");
+            setProfilePicUrl(data.profilePicUrl ?? "");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await db.from('general_settings').upsert({
+      id: 'settings',
+      heroSubtitle,
+      heroRoles,
+      heroDesc,
+      aboutSubheading,
+      experienceValue,
+      patentsValue,
+      publicationsValue,
+      grantsValue,
+      conferencesValue,
+      contactEmail,
+      contactLinkedIn,
+      contactOrcid,
+      contactWhatsApp,
+      profilePicUrl
+    });
+    if (error) {
+      console.error(error);
+      alert(`Save failed: ${error.message}`);
+    } else {
+      alert("Settings saved successfully!");
+    }
+    setSaving(false);
+  };
+
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file size (10MB limit)
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert("Upload failed: File size exceeds the 10MB limit.");
+      return;
+    }
+
+    // Validate if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert("Upload failed: Only image files are allowed.");
+      return;
+    }
+    
+    setProfileUploading(true);
+    try {
+      const filePath = `profile/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await storage.upload(filePath, file, {
+        contentType: file.type,
+        upsert: true
+      });
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = storage.getPublicUrl(filePath);
+      setProfilePicUrl(data.publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setProfileUploading(false);
+    }
+  };
+
+  if (loading) return <Loader />;
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Hero Section Text & Profile Photo</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-8">
+          <div className="space-y-4">
+            <div>
+              <RichTextField label="Subtitle" value={heroSubtitle} onChange={setHeroSubtitle} />
+            </div>
+            <div>
+              <RichTextField label="Roles / Titles" value={heroRoles} onChange={setHeroRoles} multiline rows={2} />
+            </div>
+            <div>
+              <RichTextField label="Hero Description" value={heroDesc} onChange={setHeroDesc} multiline rows={3} />
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-start border border-dashed border-academic-border p-6 rounded-xl bg-academic-surface/30">
+            <label className="block text-sm font-bold text-academic-muted mb-4 text-center">Profile Photo</label>
+            <div className="relative w-36 h-36 rounded-full overflow-hidden border-2 border-white shadow-md bg-white mb-4 group flex items-center justify-center">
+              {profilePicUrl ? (
+                <img src={profilePicUrl} alt="Dr. Aman Sharma" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-academic-surface text-academic-muted">
+                  <Image size={32} className="opacity-50 mb-1" />
+                  <span className="text-xs">Default Photo</span>
+                </div>
+              )}
+              {profileUploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 w-full">
+              <label className="flex-1 cursor-pointer flex items-center justify-center bg-academic-brand text-white px-3 py-2 rounded text-xs font-bold hover:bg-academic-brand/90 transition shadow-sm text-center">
+                Upload
+                <input type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
+              </label>
+              {profilePicUrl && (
+                <button
+                  type="button"
+                  onClick={() => setProfilePicUrl("")}
+                  className="px-3 py-2 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200 transition"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-academic-muted mt-2 text-center">Max size: 10MB. JPG, PNG, WEBP.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">About Section Text</h3>
+        <div>
+          <RichTextField label="About Subheadline" value={aboutSubheading} onChange={setAboutSubheading} multiline rows={2} />
+        </div>
+      </div>
+
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Statistics</h3>
+        <p className="text-academic-muted text-sm mb-4">Edit key metric values shown in the stats grid on the About section.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Years Experience</label>
+            <RichTextField value={experienceValue} onChange={setExperienceValue} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Patents</label>
+            <RichTextField value={patentsValue} onChange={setPatentsValue} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Publications</label>
+            <RichTextField value={publicationsValue} onChange={setPublicationsValue} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Govt Grants</label>
+            <RichTextField value={grantsValue} onChange={setGrantsValue} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-bold text-academic-muted mb-2">Conferences</label>
+            <RichTextField value={conferencesValue} onChange={setConferencesValue} />
+          </div>
+        </div>
+      </div>
+
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Contact & Social Options</h3>
+        <p className="text-academic-muted text-sm mb-4">Edit details displayed on the Contact section and administrative links.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Contact Email</label>
+            <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text" />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">LinkedIn URL</label>
+            <input type="url" value={contactLinkedIn} onChange={(e) => setContactLinkedIn(e.target.value)} className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text" />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">ORCID URL</label>
+            <input type="url" value={contactOrcid} onChange={(e) => setContactOrcid(e.target.value)} className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text" />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-2">WhatsApp Number (e.g. +919876543210)</label>
+            <input type="text" value={contactWhatsApp} onChange={(e) => setContactWhatsApp(e.target.value)} className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text" placeholder="+91..." />
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <button onClick={save} disabled={saving} className="flex w-full sm:w-auto items-center justify-center bg-academic-brand text-white px-6 py-2.5 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium disabled:opacity-70">
+            {saving ? <Loader /> : <><Save className="mr-2" size={18} /> Save Settings</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BioEditor = () => {
+  const [bio, setBio] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchBio = async () => {
+      const { data, error } = await db
+        .from('biography')
+        .select('text')
+        .eq('id', 'about')
+        .single();
+      
+      if (!error && data) {
+        setBio(data.text ?? "");
+      }
+      setLoading(false);
+    };
+
+    fetchBio();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_bio_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'biography', filter: 'id=eq.about' },
+        (payload) => {
+          const data = payload.new as any;
+          if (data) {
+            setBio(data.text ?? "");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await db.from('biography').upsert({
+      id: 'about',
+      text: bio
+    });
+    if (error) console.error(error);
+    setSaving(false);
+  };
+
+  if (loading) return <Loader />;
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Edit Biography</h3>
+        <p className="text-academic-muted mb-4 font-sans text-sm">Write your detailed biography here. This text will be displayed in the About section.</p>
+        <RichTextField value={bio} onChange={setBio} multiline rows={10} className="bg-academic-surface/30 leading-relaxed" />
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex w-full sm:w-auto items-center justify-center bg-academic-brand text-white px-6 py-2.5 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium disabled:opacity-70"
+          >
+            {saving ? <Loader /> : <><Save className="mr-2" size={18} /> Save Changes</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ResearchInterestsEditor = () => {
+  const [interests, setInterests] = useState<any[]>([]);
+  const [newInterest, setNewInterest] = useState("");
+
+  const fetchInterests = async () => {
+    const { data, error } = await db
+      .from('research_interests')
+      .select('*');
+    if (!error && data) {
+      setInterests(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchInterests();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_interests_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'research_interests' },
+        () => {
+          fetchInterests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const addInterest = async () => {
+    if (!newInterest.trim()) return;
+    const { error } = await db.from('research_interests').insert({ text: newInterest.trim() });
+    if (error) console.error(error);
+    setNewInterest("");
+  };
+
+  const deleteInterest = async (id: string) => {
+    const { error } = await db.from('research_interests').delete().eq('id', id);
+    if (error) console.error(error);
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Research Interests</h3>
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          <div className="flex-1">
+            <RichTextField
+              value={newInterest}
+              onChange={setNewInterest}
+              placeholder="Add new research interest..."
+              className="w-full"
+            />
+          </div>
+          <button
+            onClick={addInterest}
+            className="flex items-center justify-center bg-academic-brand text-white px-5 py-3 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium"
+          >
+            <Plus className="mr-2" size={18} /> Add
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {interests.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 p-4 bg-academic-surface border border-academic-border/50 rounded-xl hover:border-academic-brand/30 transition-colors">
+              <span className="min-w-0 break-words font-medium text-academic-text">{item.text}</span>
+              <button onClick={() => deleteInterest(item.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors">
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StartupEditor = () => {
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [links, setLinks] = useState<Array<{ id: string; label: string; url: string }>>([]);
+  const [newLink, setNewLink] = useState({ label: "", url: "" });
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchStartup = async () => {
+      const { data, error } = await db
+        .from('startup')
+        .select('*')
+        .eq('id', 'section')
+        .single();
+      
+      if (!error && data) {
+        setTitle(data.title ?? "");
+        setDesc(data.description ?? "");
+        setLinks(data.externalLinks?.map((l: any, i: number) => ({ id: `${i}`, ...l })) ?? []);
+        setPhotoUrl(data.photoUrl ?? "");
+      }
+    };
+
+    fetchStartup();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_startup_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'startup', filter: 'id=eq.section' },
+        (payload) => {
+          const data = payload.new as any;
+          if (data) {
+            setTitle(data.title ?? "");
+            setDesc(data.description ?? "");
+            setLinks(data.externalLinks?.map((l: any, i: number) => ({ id: `${i}`, ...l })) ?? []);
+            setPhotoUrl(data.photoUrl ?? "");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await db.from('startup').upsert({
+      id: 'section',
+      title,
+      description: desc,
+      photoUrl,
+      externalLinks: links.map(({ label, url }) => ({ label, url })),
+    });
+    if (error) console.error(error);
+    setSaving(false);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file size (10MB limit)
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert("Upload failed: File size exceeds the 10MB limit.");
+      return;
+    }
+
+    // Validate if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert("Upload failed: Only image files are allowed.");
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const filePath = `startup/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await storage.upload(filePath, file, {
+        contentType: file.type,
+        upsert: true
+      });
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = storage.getPublicUrl(filePath);
+      setPhotoUrl(data.publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const addLink = () => {
+    if (!newLink.label.trim() || !newLink.url.trim()) return;
+    setLinks([...links, { id: `${Date.now()}`, ...newLink }]);
+    setNewLink({ label: "", url: "" });
+  };
+
+  const deleteLink = (id: string) => {
+    setLinks(links.filter((l) => l.id !== id));
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Startup Section</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-8 mb-8">
+          <div className="space-y-4">
+            <RichTextField label="Section Title" value={title} onChange={setTitle} />
+            <RichTextField label="Description" value={desc} onChange={setDesc} multiline rows={4} />
+          </div>
+          <div className="flex flex-col items-center justify-start border border-dashed border-academic-border p-6 rounded-xl bg-academic-surface/30">
+            <label className="block text-sm font-bold text-academic-muted mb-4 text-center">Startup Photo</label>
+            <div className="relative w-full aspect-square border border-academic-border overflow-hidden bg-white mb-4 rounded-lg flex items-center justify-center shadow-sm">
+              {photoUrl ? (
+                <img src={photoUrl} alt="Startup Photo" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-academic-muted p-4 text-center bg-academic-surface">
+                  <Image size={32} className="opacity-50 mb-2" />
+                  <span className="text-xs">No Custom Photo (uses fallback cards)</span>
+                </div>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 w-full">
+              <label className="flex-1 cursor-pointer flex items-center justify-center bg-academic-brand text-white px-3 py-2 rounded text-xs font-bold hover:bg-academic-brand/90 transition shadow-sm text-center">
+                Upload
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              </label>
+              {photoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPhotoUrl("")}
+                  className="px-3 py-2 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200 transition"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-academic-muted mt-2 text-center">Max size: 10MB. JPG, PNG, WEBP.</p>
+          </div>
+        </div>
+
+        <h4 className="editorial-subheading text-lg mb-4 text-academic-brand">External Links</h4>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-academic-surface p-4 rounded-xl border border-academic-border/50">
+          <div className="flex-1">
+            <RichTextField
+              value={newLink.label}
+              onChange={(value) => setNewLink({ ...newLink, label: value })}
+              placeholder="Label (e.g. Website)"
+            />
+          </div>
+          <input
+            type="url"
+            value={newLink.url}
+            onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+            placeholder="URL (https://...)"
+            className="flex-1 p-3 border border-academic-border rounded-lg focus:outline-none focus:border-academic-brand"
+          />
+          <button
+            onClick={addLink}
+            className="flex items-center justify-center bg-academic-text text-white px-5 py-3 rounded-lg hover:bg-black transition shadow-sm font-medium"
+          >
+            <Plus size={16} className="mr-2" /> Add Link
+          </button>
+        </div>
+        
+        <ul className="space-y-3 mb-8">
+          {links.map((l) => (
+            <li key={l.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white border border-academic-border p-4 rounded-xl shadow-sm">
+              <div className="min-w-0">
+                <span className="font-bold text-academic-accent mr-2">{l.label}</span>
+                <span className="break-all text-academic-muted text-sm">{l.url}</span>
+              </div>
+              <button onClick={() => deleteLink(l.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                <Trash2 size={18} />
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex justify-end pt-4 border-t border-academic-border">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex w-full sm:w-auto items-center justify-center bg-academic-brand text-white px-6 py-2.5 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium"
+          >
+            {saving ? <Loader /> : <><Save size={18} className="mr-2" /> Save Changes</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FormSubmissionsViewer = () => {
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const fetchSubmissions = async () => {
+    const { data, error } = await db
+      .from('contact_submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setSubmissions(data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_submissions_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contact_submissions' },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const deleteSubmission = async (id: string) => {
+    const { error } = await db
+      .from('contact_submissions')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert(`Delete failed: ${error.message}`);
+    }
+  };
+
+  const requestDeleteSubmission = (id: string) => {
+    setConfirmAction({
+      title: "Delete submission?",
+      message: "Do you want to delete this contact form submission?",
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        setConfirmAction(null);
+        void deleteSubmission(id);
+      },
+    });
+  };
+
+  if (loading) return <Loader />;
+
+  return (
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Contact Form Submissions</h3>
+        <p className="text-academic-muted text-sm mb-6">View and manage messages sent through the Contact section on the website.</p>
+        <div className="space-y-6">
+          {submissions.map((sub) => (
+            <div key={sub.id} className="border border-academic-border p-6 rounded-xl bg-white shadow-sm hover:border-academic-brand/30 transition-all flex flex-col md:flex-row justify-between gap-4">
+              <div className="space-y-2 flex-1">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="font-bold text-academic-accent text-lg">{sub.name}</span>
+                  <a href={`mailto:${sub.email}`} className="text-academic-brand hover:underline font-sans text-sm">{sub.email}</a>
+                  <span className="text-xs text-academic-muted">{new Date(sub.created_at).toLocaleString()}</span>
+                </div>
+                <p className="text-academic-text whitespace-pre-wrap font-sans text-base leading-relaxed bg-academic-surface/30 p-4 rounded-lg border border-academic-border/50">{sub.message}</p>
+              </div>
+              <div className="flex items-start justify-end">
+                <button
+                  onClick={() => requestDeleteSubmission(sub.id)}
+                  className="flex w-full md:w-auto items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-red-100"
+                >
+                  <Trash2 size={16} className="mr-1.5" /> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+          {submissions.length === 0 && (
+            <div className="text-center py-12 text-academic-muted bg-academic-surface/50 rounded-xl border border-dashed border-academic-border">
+              <p className="font-medium">No contact submissions received yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={confirmAction.onConfirm}
+        />
+      )}
+    </div>
+  );
+};
+
+// Publications editor
+interface Publication {
+  id: string;
+  title: string;
+  link: string;
+  authors: string;
+  venue: string;
+  year: string;
+}
+
+const PublicationsEditor = () => {
+  const [pubs, setPubs] = useState<Publication[]>([]);
+  const [newPub, setNewPub] = useState<Omit<Publication, "id">>({ title: "", link: "", authors: "", venue: "", year: "" });
+  const [importing, setImporting] = useState(false);
+  const [deletingPubIds, setDeletingPubIds] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const [orcidId, setOrcidId] = useState("0000-0001-5024-292X");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchPubs = async () => {
+    const { data, error } = await db
+      .from('publications')
+      .select('*')
+      .order('year', { ascending: false });
+    if (!error && data) {
+      setPubs(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchPubs();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_publications_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'publications' },
+        () => {
+          fetchPubs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const addPub = async () => {
+    if (!newPub.title.trim()) return;
+
+    const newTitleKey = normalizePublicationTitle(newPub.title);
+    const isDuplicate = pubs.some((p) => normalizePublicationTitle(p.title) === newTitleKey);
+    if (isDuplicate) {
+      alert("A publication with this title already exists in your database!");
+      return;
+    }
+
+    const { error } = await db.from('publications').insert(newPub);
+    if (error) {
+      console.error(error);
+      alert(`Save failed: ${error.message}`);
+      return;
+    }
+    setNewPub({ title: "", link: "", authors: "", venue: "", year: "" });
+    await fetchPubs();
+  };
+
+  const deletePub = async (id: string) => {
+    const previousPubs = pubs;
+    setDeletingPubIds((ids) => new Set(ids).add(id));
+    setPubs((current) => current.filter((pub) => pub.id !== id));
+
+    const { error } = await db.from('publications').delete().eq('id', id);
+    if (error) {
+      console.error(error);
+      setPubs(previousPubs);
+      alert(`Delete failed: ${error.message}`);
+    } else {
+      await fetchPubs();
+    }
+
+    setDeletingPubIds((ids) => {
+      const next = new Set(ids);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const requestDeletePub = (id: string) => {
+    setConfirmAction({
+      title: "Delete publication?",
+      message: "Do you want to delete this publication from the admin panel and public website?",
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        setConfirmAction(null);
+        void deletePub(id);
+      },
+    });
+  };
+
+  const getDuplicatePublicationIds = () => {
+    const seenTitles = new Set<string>();
+    const duplicateIds: string[] = [];
+
+    pubs.forEach((pub) => {
+      const key = normalizePublicationTitle(pub.title);
+      if (!key) return;
+      if (seenTitles.has(key)) {
+        duplicateIds.push(pub.id);
+      } else {
+        seenTitles.add(key);
+      }
+    });
+
+    return duplicateIds;
+  };
+
+  const removeDuplicatePublications = async () => {
+    const duplicateIds = getDuplicatePublicationIds();
+    if (duplicateIds.length === 0) {
+      alert("No duplicate publications found.");
+      return;
+    }
+
+    const previousPubs = pubs;
+    setPubs((current) => current.filter((pub) => !duplicateIds.includes(pub.id)));
+    const { error } = await db.from('publications').delete().in('id', duplicateIds);
+
+    if (error) {
+      console.error(error);
+      setPubs(previousPubs);
+      alert(`Duplicate removal failed: ${error.message}`);
+      return;
+    }
+
+    await fetchPubs();
+  };
+
+  const requestRemoveDuplicates = () => {
+    const duplicateIds = getDuplicatePublicationIds();
+    setConfirmAction({
+      title: duplicateIds.length ? "Remove duplicate publications?" : "No duplicates found",
+      message: duplicateIds.length
+        ? `Found ${duplicateIds.length} duplicate publication${duplicateIds.length === 1 ? "" : "s"}. This will keep the first copy and remove the extra copies.`
+        : "There are no duplicate publication titles to remove.",
+      confirmLabel: duplicateIds.length ? "Remove Duplicates" : "OK",
+      onConfirm: () => {
+        setConfirmAction(null);
+        if (duplicateIds.length > 0) {
+          void removeDuplicatePublications();
+        }
+      },
+    });
+  };
+
+  const updatePub = async (id: string, updates: Partial<Publication>) => {
+    setPubs((current) => current.map((pub) => (pub.id === id ? { ...pub, ...updates } : pub)));
+    const { error } = await db.from('publications').update(updates).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert(`Update failed: ${error.message}`);
+      await fetchPubs();
+    }
+  };
+
+  const parseBibTeX = (bibtex: string) => {
+    const entries: Omit<Publication, "id">[] = [];
+    const entryRegex = /@(\w+)\s*{\s*([^,]+),([^@]*)}/gs;
+    let match;
+    while ((match = entryRegex.exec(bibtex)) !== null) {
+      const fieldsStr = match[3];
+      const fields: any = {};
+      const fieldRegex = /(\w+)\s*=\s*(?:{([^}]*)}|"([^"]*)"|([^,\s]+))/g;
+      let fieldMatch;
+      while ((fieldMatch = fieldRegex.exec(fieldsStr)) !== null) {
+        const key = fieldMatch[1].toLowerCase();
+        const val = fieldMatch[2] || fieldMatch[3] || fieldMatch[4];
+        fields[key] = val ? val.replace(/[\n\r]+/g, ' ').trim() : "";
+      }
+      
+      entries.push({
+        title: fields.title || "Untitled",
+        authors: fields.author ? fields.author.replace(/ and /g, ', ') : "Unknown",
+        venue: fields.journal || fields.booktitle || fields.publisher || "",
+        year: fields.year || new Date().getFullYear().toString(),
+        link: fields.url || (fields.doi ? `https://doi.org/${fields.doi}` : ""),
+      });
+    }
+    return entries;
+  };
+
+  const handleBibtexImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setImporting(true);
+    const text = await file.text();
+    const parsedPubs = parseBibTeX(text);
+    
+    // Filter duplicates
+    const existingTitles = new Set(pubs.map((p) => normalizePublicationTitle(p.title)));
+    const nonDuplicates = parsedPubs.filter(
+      (p) => !existingTitles.has(normalizePublicationTitle(p.title))
+    );
+
+    if (nonDuplicates.length === 0) {
+      alert("Import complete: All publications in the BibTeX file already exist in your database!");
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    
+    const { error } = await db.from('publications').insert(nonDuplicates);
+    if (error) console.error(error);
+    
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    alert(`Successfully imported ${nonDuplicates.length} new publications! (Skipped ${parsedPubs.length - nonDuplicates.length} duplicates)`);
+  };
+
+  const handleOrcidImport = async () => {
+    if (!orcidId.trim()) {
+      alert("Please enter your ORCID iD.");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      // Fetch Works directly using unauthenticated request with CORS supported public API
+      const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId.trim()}/works`, {
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      if (!worksRes.ok) throw new Error("Failed to fetch works from ORCID. Ensure your ORCID iD is correct.");
+      const worksData = await worksRes.json();
+
+      const groups = worksData.group || [];
+      const newPubsToImport = [];
+      const existingTitles = new Set(pubs.map((p) => normalizePublicationTitle(p.title)));
+
+      for (const group of groups) {
+        const summary = group["work-summary"]?.[0];
+        if (!summary) continue;
+
+        const title = summary.title?.title?.value || "Untitled";
+        const cleanedTitle = normalizePublicationTitle(title);
+        if (existingTitles.has(cleanedTitle)) continue;
+
+        const year = summary["publication-date"]?.year?.value || new Date().getFullYear().toString();
+        const venue = summary["journal-title"]?.value || "";
+        const link = summary.url?.value || (summary["external-ids"]?.["external-id"]?.[0]?.["external-id-url"]?.value) || "";
+        
+        newPubsToImport.push({
+          title,
+          year,
+          venue,
+          link,
+          authors: "Aman Sharma et al."
+        });
+        
+        existingTitles.add(cleanedTitle); // avoid duplicates in the same session
+      }
+
+      if (newPubsToImport.length > 0) {
+        const { error } = await db.from('publications').insert(newPubsToImport);
+        if (error) throw error;
+        alert(`Successfully imported ${newPubsToImport.length} new publications from ORCID!`);
+      } else {
+        alert("Import complete: No new publications found. All works are already up-to-date!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`ORCID Import Error: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="editorial-heading text-2xl sm:text-3xl">Publications</h3>
+              <span className="bg-academic-brand/10 text-academic-brand px-3 py-1 rounded-full text-xs font-bold border border-academic-brand/20">
+                {pubs.length} Total
+              </span>
+            </div>
+            <p className="text-academic-muted text-sm mt-1">Manage publications or import from Google Scholar/ORCID.</p>
+          </div>
+          
+          <div className="flex w-full flex-col sm:flex-row gap-4 md:w-auto">
+            <button
+              type="button"
+              onClick={requestRemoveDuplicates}
+              className="flex items-center justify-center rounded-lg border border-academic-brand bg-white px-4 py-2 text-sm font-bold text-academic-brand shadow-sm transition hover:bg-academic-brand hover:text-white"
+            >
+              Remove Duplicates
+            </button>
+            {/* BibTeX Import */}
+            <div className="w-full bg-academic-surface p-3 rounded-lg border border-academic-brand/20 flex flex-col items-center sm:w-auto">
+              <span className="text-xs font-bold text-academic-brand uppercase tracking-wider mb-2">BibTeX Import</span>
+              <input 
+                type="file" 
+                accept=".bib" 
+                ref={fileInputRef}
+                onChange={handleBibtexImport}
+                className="hidden" 
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="flex w-full items-center justify-center bg-white text-academic-brand border border-academic-brand px-4 py-2 rounded-lg hover:bg-academic-brand hover:text-white transition shadow-sm font-medium text-sm disabled:opacity-50"
+              >
+                {importing ? <Loader /> : <><FileUp size={16} className="mr-2" /> Upload .bib File</>}
+              </button>
+            </div>
+
+            {/* ORCID Import */}
+            <div className="w-full bg-academic-surface p-3 rounded-lg border border-academic-brand/20 flex flex-col items-center sm:w-auto">
+              <span className="text-xs font-bold text-academic-brand uppercase tracking-wider mb-2">ORCID Auto-Import</span>
+              <div className="flex flex-col gap-2 w-full sm:max-w-[200px]">
+                <input
+                  type="text"
+                  placeholder="Your ORCID iD"
+                  value={orcidId}
+                  onChange={(e) => setOrcidId(e.target.value)}
+                  className="p-2 text-sm border border-academic-border rounded focus:outline-none focus:border-academic-brand"
+                />
+                <button
+                  onClick={handleOrcidImport}
+                  disabled={importing}
+                  className="flex justify-center items-center bg-academic-brand text-white border border-academic-brand px-4 py-2 rounded hover:bg-academic-brand/90 transition shadow-sm font-medium text-sm disabled:opacity-50"
+                >
+                  {importing ? <Loader /> : "Sync from ORCID"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-academic-surface p-6 rounded-xl border border-academic-border mb-8">
+          <h4 className="font-bold text-academic-accent mb-4 flex items-center">
+            <Plus size={18} className="mr-2 text-academic-brand" /> Add Manually
+          </h4>
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <RichTextField placeholder="Title" value={newPub.title} onChange={(value) => setNewPub({...newPub, title: value})} />
+            <RichTextField placeholder="Authors (comma separated)" value={newPub.authors} onChange={(value) => setNewPub({...newPub, authors: value})} />
+            <RichTextField placeholder="Venue / Journal" value={newPub.venue} onChange={(value) => setNewPub({...newPub, venue: value})} />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="w-full sm:w-1/3">
+                <RichTextField placeholder="Year" value={newPub.year} onChange={(value) => setNewPub({...newPub, year: value})} />
+              </div>
+              <input type="url" placeholder="Link (URL/DOI)" value={newPub.link} onChange={(e) => setNewPub({...newPub, link: e.target.value})} className="flex-1 p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30" />
+            </div>
+          </div>
+          <button onClick={addPub} className="w-full sm:w-auto bg-academic-text text-white px-5 py-2.5 rounded-lg hover:bg-black transition font-medium">
+            Save Publication
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {pubs.map((p) => (
+            <div key={p.id} className="border border-academic-border p-5 rounded-xl bg-white shadow-sm transition-all hover:border-academic-brand/30">
+              <div className="grid md:grid-cols-12 gap-4">
+                <div className="md:col-span-2">
+                  <RichTextField value={p.year} onChange={(value) => updatePub(p.id, { year: value })} placeholder="Year" className="font-bold text-xl text-academic-brand" />
+                </div>
+                <div className="md:col-span-10 space-y-2">
+                  <RichTextField value={p.title} onChange={(value) => updatePub(p.id, { title: value })} placeholder="Title" className="font-bold text-lg text-academic-accent" />
+                  <RichTextField value={p.authors} onChange={(value) => updatePub(p.id, { authors: value })} placeholder="Authors" className="text-academic-muted text-sm" />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1">
+                      <RichTextField value={p.venue} onChange={(value) => updatePub(p.id, { venue: value })} placeholder="Venue" className="text-academic-muted text-sm italic" />
+                    </div>
+                    <input type="url" value={p.link} onChange={(e) => updatePub(p.id, { link: e.target.value })} className="flex-1 p-1 border border-transparent hover:border-academic-border focus:border-academic-brand focus:outline-none text-blue-600 text-sm transition-colors rounded" placeholder="Link URL" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end mt-4 pt-4 border-t border-academic-border/50">
+                <button onClick={() => requestDeletePub(p.id)} disabled={deletingPubIds.has(p.id)} className="flex w-full sm:w-auto items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded transition-colors text-sm font-medium disabled:opacity-60">
+                  <Trash2 size={16} className="mr-1.5" /> {deletingPubIds.has(p.id) ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          ))}
+          {pubs.length === 0 && (
+            <div className="text-center py-10 text-academic-muted">
+              No publications added yet. Import a BibTeX file or add one manually above.
+            </div>
+          )}
+        </div>
+      </div>
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={confirmAction.onConfirm}
+        />
+      )}
+    </div>
+  );
+};
+
+const MediaGallery = () => {
+  const [images, setImages] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [deletingImageIds, setDeletingImageIds] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const fetchImages = async () => {
+    const { data, error } = await db
+      .from('media_gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setImages(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchImages();
+
+    // Subscribe to real-time changes
+    const channel = db
+      .channel('admin_media_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'media_gallery' },
+        () => {
+          fetchImages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check file size (10MB limit = 10 * 1024 * 1024 bytes)
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert("Upload failed: File size exceeds the 10MB limit.");
+      return;
+    }
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert("Upload failed: Only image files are allowed.");
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const filePath = `media/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await storage.upload(filePath, file, {
+        contentType: file.type,
+        upsert: true
+      });
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = storage.getPublicUrl(filePath);
+      const { error: dbError } = await db.from('media_gallery').insert({ url: data.publicUrl });
+      if (dbError) {
+        throw dbError;
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteImage = async (docId: string, url: string) => {
+    const previousImages = images;
+    setDeletingImageIds((ids) => new Set(ids).add(docId));
+    setImages((current) => current.filter((image) => image.id !== docId));
+
+    const filePath = getPhotosStoragePath(url);
+    if (filePath) {
+      await storage.remove([filePath]).catch((err) => console.error(err));
+    }
+    const { error } = await db.from('media_gallery').delete().eq('id', docId);
+    if (error) {
+      console.error(error);
+      setImages(previousImages);
+      alert(`Delete failed: ${error.message}`);
+    } else {
+      await fetchImages();
+    }
+
+    setDeletingImageIds((ids) => {
+      const next = new Set(ids);
+      next.delete(docId);
+      return next;
+    });
+  };
+
+  const requestDeleteImage = (docId: string, url: string) => {
+    setConfirmAction({
+      title: "Delete image?",
+      message: "Do you want to delete this image from the gallery?",
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        setConfirmAction(null);
+        void deleteImage(docId, url);
+      },
+    });
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto relative">
+      {uploading && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] flex flex-col items-center justify-center text-white transition-opacity duration-300">
+          <svg className="animate-spin h-16 w-16 text-academic-brand mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          <h2 className="font-sans font-bold text-xl uppercase tracking-widest text-academic-brand mb-2">Uploading Photo</h2>
+          <p className="font-serif italic text-sm text-academic-muted/80">Please wait while the image is uploaded to academic archive...</p>
+        </div>
+      )}
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-8">
+          <h3 className="editorial-heading text-2xl sm:text-3xl">Media Gallery</h3>
+          <label className="cursor-pointer flex items-center justify-center bg-academic-brand text-white px-5 py-2.5 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium">
+            <Upload size={18} className="mr-2" /> Upload Image
+            <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+          {images.map((img) => (
+            <div key={img.id} className="relative group rounded-xl overflow-hidden shadow-sm border border-academic-border bg-academic-surface aspect-square flex items-center justify-center">
+              <img src={img.url} alt="gallery" className="object-cover w-full h-full" />
+              <button
+                onClick={() => requestDeleteImage(img.id, img.url)}
+                disabled={deletingImageIds.has(img.id)}
+                className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-100 sm:bg-black/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity backdrop-blur-[1px] disabled:cursor-wait"
+                aria-label="Delete image"
+              >
+                <div className="bg-red-500 text-white p-3 rounded-full hover:scale-110 transition-transform shadow-lg">
+                  <Trash2 size={24} />
+                </div>
+              </button>
+            </div>
+          ))}
+          {images.length === 0 && (
+            <div className="col-span-full text-center py-12 text-academic-muted bg-academic-surface/50 rounded-xl border border-dashed border-academic-border">
+              <Image size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No images uploaded yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={confirmAction.onConfirm}
+        />
+      )}
+    </div>
+  );
+};
+
+const ChangePasswordEditor = () => {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const savePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setMessage(null);
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error: updateError } = await auth.updateUser({ password });
+      if (updateError) throw updateError;
+
+      setPassword("");
+      setConfirmPassword("");
+      setMessage("Password changed successfully.");
+    } catch (err: any) {
+      setError(err.message || "Password change failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-xl mx-auto">
+      <form onSubmit={savePassword} className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-2 flex items-center">
+          <KeyRound className="mr-3 text-academic-brand" size={26} />
+          Change Password
+        </h3>
+        <p className="text-academic-muted text-sm mb-6">Update the password for the currently signed-in admin account.</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-1" htmlFor="admin-new-password">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                id="admin-new-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={8}
+                className="w-full p-3 pr-10 rounded-lg bg-academic-bg border border-academic-border text-academic-text focus:outline-none focus:border-academic-brand focus:ring-1 focus:ring-academic-brand transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((shown) => !shown)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-academic-muted hover:text-academic-brand"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-academic-muted mb-1" htmlFor="admin-confirm-password">
+              Confirm Password
+            </label>
+            <input
+              id="admin-confirm-password"
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+              minLength={8}
+              className="w-full p-3 rounded-lg bg-academic-bg border border-academic-border text-academic-text focus:outline-none focus:border-academic-brand focus:ring-1 focus:ring-academic-brand transition"
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm text-center">
+            {message}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-8 flex w-full items-center justify-center bg-academic-brand text-white px-6 py-3 rounded-lg hover:bg-academic-brand/90 transition shadow-sm font-medium disabled:opacity-70"
+        >
+          {saving ? <Loader /> : <><Save size={18} className="mr-2" /> Save New Password</>}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+// ----------------------- Main Admin Dashboard ----------------------- //
+
+export default function AdminDashboard() {
+  const { user, authLoading } = useCurrentUser();
+  const location = useLocation();
+  const selected = location.pathname.split("/admin/")[1]?.split("/")[0] || "general";
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-academic-bg">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div className="flex min-h-screen bg-academic-bg chemistry-grid">
+      <Sidebar selected={selected} />
+      <div className="min-w-0 flex-1 flex flex-col md:max-h-screen md:overflow-hidden">
+        <MobileTabs selected={selected} />
+        <main className="flex-1 overflow-y-auto pb-24">
+          <Routes>
+            <Route path="general" element={<GeneralSettingsEditor />} />
+            <Route path="bio" element={<BioEditor />} />
+            <Route path="research" element={<ResearchInterestsEditor />} />
+            <Route path="startup" element={<StartupEditor />} />
+            <Route path="publications" element={<PublicationsEditor />} />
+            <Route path="media" element={<MediaGallery />} />
+            <Route path="submissions" element={<FormSubmissionsViewer />} />
+            <Route path="password" element={<ChangePasswordEditor />} />
+            <Route path="*" element={<Navigate to="general" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}

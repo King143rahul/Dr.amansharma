@@ -36,14 +36,6 @@ const SEO_BY_PATH: Record<string, SeoConfig> = {
       'AMSH Endeavours, AMSH Endeavours founder, Dr Aman Sharma startup, wastewater treatment startup Bangalore, environmental startup Bengaluru, sustainable water treatment, eco friendly wastewater solutions',
     canonical: `${SITE_URL}/startup`,
   },
-  '/teaching': {
-    title: 'Chemistry Teaching in Bengaluru | Dr. Aman Sharma, Assistant Professor',
-    description:
-      'Dr. Aman Sharma teaches chemistry, environmental chemistry, and biochemistry, with experience mentoring students across competitive and board curricula including NEET, IIT-JEE, KCET, IB, IGCSE, ISC, ICSE, CBSE, and NIOS.',
-    keywords:
-      'chemistry professor Bangalore, chemistry teacher Bengaluru, best chemistry professor in Bangalore, NEET chemistry mentor, IIT JEE chemistry mentor, KCET chemistry, environmental chemistry professor',
-    canonical: `${SITE_URL}/teaching`,
-  },
   '/gallery': {
     title: 'Gallery | Dr. Aman Sharma | Chemistry Research, Teaching & Conferences',
     description:
