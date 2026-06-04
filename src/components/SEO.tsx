@@ -13,19 +13,19 @@ type SeoConfig = {
 
 const SEO_BY_PATH: Record<string, SeoConfig> = {
   '/': {
-    title: 'Dr. Aman Sharma, PhD | Chemistry Professor in Bengaluru | Founder, AMSH Endeavours',
+    title: 'Dr. Aman Sharma, PhD | Materials Chemist & Chemistry Professor in Bengaluru',
     description:
-      'Dr. Aman Sharma, PhD, is an Assistant Professor of Chemistry at S-VYASA University Bengaluru, MRSC, materials chemist, and founder of AMSH Endeavours working on green chemistry, nanotechnology, wastewater remediation, biomass valorisation, and waste-to-wealth research.',
+      'Dr. Aman Sharma, PhD, is an Assistant Professor of Chemistry at S-VYASA University Bengaluru, materials chemist, Royal Society of Chemistry member, and founder of AMSH Endeavours.',
     keywords:
-      'Dr Aman Sharma, Aman Sharma PhD, chemistry professor in Bangalore, chemistry professor in Bengaluru, best chemistry professor in Bangalore, best chemistry professor in banglore, S-VYASA University chemistry, AMSH Endeavours founder, materials chemistry, green chemistry, nanotechnology, wastewater remediation, biomass valorisation, waste to wealth, environmental chemistry, MRSC',
+      'Dr Aman Sharma, Aman Sharma PhD, chemistry professor in Bengaluru, chemistry professor in Bangalore, S-VYASA University chemistry, AMSH Endeavours founder, materials chemistry, green chemistry, nanotechnology, wastewater remediation, biomass valorisation, waste to wealth, environmental chemistry',
     canonical: `${SITE_URL}/`,
   },
   '/research': {
     title: 'Research | Dr. Aman Sharma | Green Chemistry, Nanotechnology & Wastewater Remediation',
     description:
-      'Explore Dr. Aman Sharma’s research in materials chemistry, biomass-derived carbon materials, nanotechnology, dye degradation, membrane technology, wastewater remediation, supercapacitors, and sustainable environmental chemistry.',
+      "Explore Dr. Aman Sharma's research in materials chemistry, biomass-derived carbon materials, nanotechnology, dye degradation, membrane technology, wastewater remediation, hydrogen materials, and sustainable environmental chemistry.",
     keywords:
-      'Aman Sharma research, green chemistry research Bangalore, nanotechnology researcher Bengaluru, wastewater remediation chemistry, biomass carbon materials, dye degradation, carbon nanomaterials, environmental chemistry publications, S-VYASA chemistry research',
+      'Aman Sharma research, green chemistry research Bangalore, nanotechnology researcher Bengaluru, wastewater remediation chemistry, biomass carbon materials, hydrogen production materials, carbon nanomaterials, environmental chemistry publications, S-VYASA chemistry research',
     canonical: `${SITE_URL}/research`,
   },
   '/startup': {
@@ -39,7 +39,7 @@ const SEO_BY_PATH: Record<string, SeoConfig> = {
   '/gallery': {
     title: 'Gallery | Dr. Aman Sharma | Chemistry Research, Teaching & Conferences',
     description:
-      'View highlights from Dr. Aman Sharma’s academic work, chemistry teaching, research labs, conferences, workshops, awards, and scientific events.',
+      "View highlights from Dr. Aman Sharma's academic work, chemistry teaching, research labs, conferences, workshops, awards, and scientific events.",
     keywords:
       'Dr Aman Sharma gallery, chemistry conferences Bangalore, S-VYASA chemistry events, research labs, teaching sessions, scientific events',
     canonical: `${SITE_URL}/gallery`,
@@ -83,8 +83,8 @@ const buildSchema = (seo: SeoConfig, path: string) => ({
       familyName: 'Sharma',
       jobTitle: 'Assistant Professor of Chemistry',
       description:
-        'Assistant Professor of Chemistry at S-VYASA University Bengaluru, materials chemist, MRSC, and founder of AMSH Endeavours.',
-      email: 'mailto:amansharmapdh@gmail.com',
+        'Assistant Professor of Chemistry at S-VYASA University Bengaluru, materials chemist, Royal Society of Chemistry member, and founder of AMSH Endeavours.',
+      email: 'mailto:AmanSharmaphd@gmail.com',
       image: IMAGE_URL,
       url: SITE_URL,
       sameAs: [
@@ -103,18 +103,14 @@ const buildSchema = (seo: SeoConfig, path: string) => ({
           addressCountry: 'IN',
         },
       },
-      workLocation: {
-        '@type': 'Place',
-        name: 'Bengaluru, Karnataka, India',
-      },
       knowsAbout: [
         'Materials Chemistry',
         'Green Chemistry',
         'Nanotechnology',
         'Wastewater Remediation',
+        'Hydrogen Production Materials',
         'Waste to Wealth',
         'Biomass Valorisation',
-        'Pollutant Degradation',
         'Environmental Chemistry',
         'Carbon Nanomaterials',
         'Membrane Technology',
@@ -139,16 +135,22 @@ const buildSchema = (seo: SeoConfig, path: string) => ({
         'Government grant-supported startup focused on eco-friendly and cost-efficient wastewater treatment solutions.',
     },
     {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      name: 'Dr. Aman Sharma',
+      url: SITE_URL,
+      publisher: {
+        '@id': `${SITE_URL}/#person`,
+      },
+    },
+    {
       '@type': 'WebPage',
       '@id': `${seo.canonical}#webpage`,
       url: seo.canonical,
       name: seo.title,
       description: seo.description,
       isPartOf: {
-        '@type': 'WebSite',
         '@id': `${SITE_URL}/#website`,
-        name: 'Dr. Aman Sharma',
-        url: SITE_URL,
       },
       about: {
         '@id': `${SITE_URL}/#person`,
@@ -192,6 +194,7 @@ export const SEO = () => {
     setCanonical(seo.canonical);
     setMeta('meta[name="description"]', 'content', seo.description);
     setMeta('meta[name="keywords"]', 'content', seo.keywords);
+    setMeta('meta[name="robots"]', 'content', pathname.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
     setMeta('meta[property="og:title"]', 'content', seo.title);
     setMeta('meta[property="og:description"]', 'content', seo.description);
     setMeta('meta[property="og:url"]', 'content', seo.canonical);

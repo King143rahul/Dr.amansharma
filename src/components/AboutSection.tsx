@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Award, BookOpen, FlaskConical, Users, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
+import { sanitizeHtml } from '../lib/sanitizeHtml';
 
 export const AboutSection = () => {
   const [bioText, setBioText] = useState<string>("");
@@ -114,7 +115,7 @@ export const AboutSection = () => {
   const paragraphs = bioText.split('\n').filter(p => p.trim() !== '');
 
   return (
-    <section id="about" className="py-20 sm:py-24 lg:py-32 bg-academic-surface border-b border-academic-border relative z-10">
+    <section id="about" className="py-10 sm:py-14 lg:py-16 bg-academic-surface border-b border-academic-border relative z-10">
       <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
@@ -128,7 +129,7 @@ export const AboutSection = () => {
             <div className="editorial-subheading">About the Researcher</div>
             <h2 
               className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-academic-accent mb-8 sm:mb-10 leading-tight"
-              dangerouslySetInnerHTML={{ __html: subheading }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(subheading) }}
             />
             <div className="space-y-5 sm:space-y-6 text-academic-muted text-base sm:text-lg leading-relaxed font-sans font-medium">
               {loading ? (
@@ -139,7 +140,7 @@ export const AboutSection = () => {
                 </div>
               ) : paragraphs.length > 0 ? (
                 paragraphs.map((p, idx) => (
-                  <p key={idx} dangerouslySetInnerHTML={{ __html: p }} />
+                  <p key={idx} dangerouslySetInnerHTML={{ __html: sanitizeHtml(p) }} />
                 ))
               ) : (
                 <p>Biography information is currently being updated.</p>
@@ -165,7 +166,7 @@ export const AboutSection = () => {
                 </div>
                 <div
                   className="text-3xl sm:text-4xl font-serif text-academic-accent mb-2 tracking-tight break-words"
-                  dangerouslySetInnerHTML={{ __html: stat.value }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(stat.value) }}
                 />
                 <div className="text-xs text-academic-muted uppercase tracking-widest font-sans font-bold">{stat.label}</div>
               </motion.div>

@@ -18,12 +18,73 @@ const getPhotosStoragePath = (url: string) => {
   }
 };
 
-const normalizePublicationTitle = (title: string) =>
-  title
+const getDeletedCount = (data: unknown) => (Array.isArray(data) ? data.length : data ? 1 : 0);
+
+const DESIGN_STYLE_OPTIONS = [
+  { value: 'classic', label: 'Classic Academic' },
+  { value: 'clean', label: 'Clean Modern' },
+  { value: 'editorial', label: 'Editorial Italic' },
+];
+
+const normalizePublicationTitle = (title: string) => {
+  const stopWords = new Set(['a', 'an', 'the', 'and', 'in', 'on', 'at', 'of', 'from', 'to', 'for', 'by', 'with', 'through', 'into', 'about', 'as']);
+  return title
     .replace(/<[^>]*>/g, "")
     .toLowerCase()
-    .replace(/\s+/g, " ")
+    .replace(/[\u2013\u2014]/g, "-") // normalize en-dash and em-dash to hyphen
+    .replace(/[\u2018\u2019]/g, "'") // normalize curly single quotes to straight
+    .replace(/[\u201C\u201D]/g, '"') // normalize curly double quotes to straight
+    .replace(/[^a-z0-9\s]/g, "") // strip other punctuation/special characters
+    .split(/\s+/)
+    .filter(word => word && !stopWords.has(word))
+    .join(" ")
     .trim();
+};
+
+const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'image/webp') {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context could not be created'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Canvas toBlob failed'));
+              return;
+            }
+            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            const webpFile = new File(
+              [blob],
+              `${nameWithoutExt}.webp`,
+              { type: 'image/webp', lastModified: Date.now() }
+            );
+            resolve(webpFile);
+          },
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image file'));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
 
 // Simple loader component
 const Loader = () => (
@@ -285,9 +346,12 @@ const MobileTabs = ({ selected }: { selected: string }) => {
 // ----------------------- Section Editors ----------------------- //
 
 const GeneralSettingsEditor = () => {
+  const [name, setName] = useState("");
   const [heroSubtitle, setHeroSubtitle] = useState("");
   const [heroRoles, setHeroRoles] = useState("");
   const [heroDesc, setHeroDesc] = useState("");
+  const [heroNameStyle, setHeroNameStyle] = useState("classic");
+  const [footerNameStyle, setFooterNameStyle] = useState("clean");
   const [aboutSubheading, setAboutSubheading] = useState("");
   
   // Stats
@@ -317,16 +381,19 @@ const GeneralSettingsEditor = () => {
         .single();
       
       if (!error && data) {
+        setName((data.name ?? "Dr Aman Sharma, MRSC").replace(/\bsharma\b/gi, 'Sharma').replace(/\bMSRC\b/g, 'MRSC'));
         setHeroSubtitle(data.heroSubtitle ?? "Sustainability Innovator & Researcher");
         setHeroRoles(data.heroRoles ?? "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours");
         setHeroDesc(data.heroDesc ?? "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.");
+        setHeroNameStyle(data.heroNameStyle ?? "classic");
+        setFooterNameStyle(data.footerNameStyle ?? "clean");
         setAboutSubheading(data.aboutSubheading ?? "Pioneering the intersection of nanotechnology and green chemistry.");
         setExperienceValue(data.experienceValue ?? "7+");
         setPatentsValue(data.patentsValue ?? "Multiple");
         setPublicationsValue(data.publicationsValue ?? "15+");
         setGrantsValue(data.grantsValue ?? "2");
         setConferencesValue(data.conferencesValue ?? "10+");
-        setContactEmail(data.contactEmail ?? "amansharmapdh@gmail.com");
+        setContactEmail(data.contactEmail ?? "AmanSharmaphd@gmail.com");
         setContactLinkedIn(data.contactLinkedIn ?? "https://www.linkedin.com/in/amansharmaphd/");
         setContactOrcid(data.contactOrcid ?? "https://orcid.org/0000-0000-0000-0000");
         setContactWhatsApp(data.contactWhatsApp ?? "");
@@ -336,47 +403,19 @@ const GeneralSettingsEditor = () => {
     };
 
     fetchSettings();
-
-    // Subscribe to real-time changes
-    const channel = db
-      .channel('admin_settings_changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'general_settings', filter: 'id=eq.settings' },
-        (payload) => {
-          const data = payload.new as any;
-          if (data) {
-            setHeroSubtitle(data.heroSubtitle ?? "");
-            setHeroRoles(data.heroRoles ?? "");
-            setHeroDesc(data.heroDesc ?? "");
-            setAboutSubheading(data.aboutSubheading ?? "");
-            setExperienceValue(data.experienceValue ?? "");
-            setPatentsValue(data.patentsValue ?? "");
-            setPublicationsValue(data.publicationsValue ?? "");
-            setGrantsValue(data.grantsValue ?? "");
-            setConferencesValue(data.conferencesValue ?? "");
-            setContactEmail(data.contactEmail ?? "");
-            setContactLinkedIn(data.contactLinkedIn ?? "");
-            setContactOrcid(data.contactOrcid ?? "");
-            setContactWhatsApp(data.contactWhatsApp ?? "");
-            setProfilePicUrl(data.profilePicUrl ?? "");
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      db.removeChannel(channel);
-    };
   }, []);
 
   const save = async () => {
     setSaving(true);
+    const capitalizedName = name.replace(/\bsharma\b/gi, 'Sharma');
     const { error } = await db.from('general_settings').upsert({
       id: 'settings',
+      name: capitalizedName,
       heroSubtitle,
       heroRoles,
       heroDesc,
+      heroNameStyle,
+      footerNameStyle,
       aboutSubheading,
       experienceValue,
       patentsValue,
@@ -417,9 +456,10 @@ const GeneralSettingsEditor = () => {
     
     setProfileUploading(true);
     try {
-      const filePath = `profile/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await storage.upload(filePath, file, {
-        contentType: file.type,
+      const webpFile = await convertToWebP(file);
+      const filePath = `profile/${Date.now()}_${webpFile.name}`;
+      const { error: uploadError } = await storage.upload(filePath, webpFile, {
+        contentType: 'image/webp',
         upsert: true
       });
       if (uploadError) {
@@ -427,7 +467,21 @@ const GeneralSettingsEditor = () => {
       }
 
       const { data } = storage.getPublicUrl(filePath);
-      setProfilePicUrl(data.publicUrl);
+      const publicUrl = data.publicUrl;
+      setProfilePicUrl(publicUrl);
+
+      // Auto-save to database
+      const { error: dbErr } = await db
+        .from('general_settings')
+        .update({ profilePicUrl: publicUrl })
+        .eq('id', 'settings');
+      
+      if (dbErr) {
+        console.error("Auto-save profile picture failed:", dbErr);
+        alert(`Profile photo uploaded but save to settings failed: ${dbErr.message}`);
+      } else {
+        alert("Profile photo uploaded and saved successfully!");
+      }
     } catch (err: any) {
       console.error(err);
       alert(`Upload failed: ${err.message}`);
@@ -436,14 +490,86 @@ const GeneralSettingsEditor = () => {
     }
   };
 
+  const handleRemoveProfilePic = async () => {
+    setProfilePicUrl("");
+    try {
+      const { error: dbErr } = await db
+        .from('general_settings')
+        .update({ profilePicUrl: "" })
+        .eq('id', 'settings');
+      
+      if (dbErr) {
+        console.error("Auto-save remove profile picture failed:", dbErr);
+        alert(`Profile photo removed from view but database update failed: ${dbErr.message}`);
+      } else {
+        alert("Profile photo removed and saved successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Remove failed: ${err.message}`);
+    }
+  };
+
   if (loading) return <Loader />;
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
-      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
-        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Hero Section Text & Profile Photo</h3>
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
+      <div className="rounded-lg border border-academic-border bg-white p-5 shadow-sm sm:p-8">
+        <div className="mb-6 flex flex-col gap-3 border-b border-academic-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-academic-brand">Appearance & Content</p>
+            <h3 className="editorial-heading text-2xl sm:text-3xl">Hero Section & Profile</h3>
+          </div>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-academic-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-70"
+          >
+            <Save size={16} />
+            {saving ? "Saving..." : "Save All Changes"}
+          </button>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-8">
           <div className="space-y-4">
+            <div>
+              <RichTextField label="Researcher Name" value={name} onChange={setName} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-academic-muted">Home Name Font</span>
+                <select
+                  value={heroNameStyle}
+                  onChange={(event) => setHeroNameStyle(event.target.value)}
+                  className="w-full rounded-md border border-academic-border bg-white p-3 font-medium text-academic-text focus:border-academic-brand focus:outline-none focus:ring-2 focus:ring-academic-brand/20"
+                >
+                  {DESIGN_STYLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-academic-muted">Footer Name Font</span>
+                <select
+                  value={footerNameStyle}
+                  onChange={(event) => setFooterNameStyle(event.target.value)}
+                  className="w-full rounded-md border border-academic-border bg-white p-3 font-medium text-academic-text focus:border-academic-brand focus:outline-none focus:ring-2 focus:ring-academic-brand/20"
+                >
+                  {DESIGN_STYLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="rounded-lg border border-academic-border bg-academic-surface/50 p-4">
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-academic-muted">Live Font Preview</p>
+              <div className={`${`name-display-${heroNameStyle}`} text-4xl leading-none text-academic-accent`}>
+                {name || "Dr Aman Sharma, MRSC"}
+              </div>
+              <div className={`${`name-display-${footerNameStyle}`} mt-4 border-t border-academic-border pt-4 text-2xl leading-none text-academic-accent`}>
+                {name || "Dr Aman Sharma, MRSC"}
+              </div>
+            </div>
             <div>
               <RichTextField label="Subtitle" value={heroSubtitle} onChange={setHeroSubtitle} />
             </div>
@@ -482,7 +608,7 @@ const GeneralSettingsEditor = () => {
               {profilePicUrl && (
                 <button
                   type="button"
-                  onClick={() => setProfilePicUrl("")}
+                  onClick={handleRemoveProfilePic}
                   className="px-3 py-2 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200 transition"
                 >
                   Reset
@@ -580,25 +706,6 @@ const BioEditor = () => {
     };
 
     fetchBio();
-
-    // Subscribe to real-time changes
-    const channel = db
-      .channel('admin_bio_changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'biography', filter: 'id=eq.about' },
-        (payload) => {
-          const data = payload.new as any;
-          if (data) {
-            setBio(data.text ?? "");
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      db.removeChannel(channel);
-    };
   }, []);
 
   const save = async () => {
@@ -674,8 +781,23 @@ const ResearchInterestsEditor = () => {
   };
 
   const deleteInterest = async (id: string) => {
-    const { error } = await db.from('research_interests').delete().eq('id', id);
-    if (error) console.error(error);
+    const previousInterests = interests;
+    setInterests((current) => current.filter((item) => item.id !== id));
+
+    const { data, error } = await db
+      .from('research_interests')
+      .delete()
+      .eq('id', id)
+      .select('id');
+
+    if (error || getDeletedCount(data) === 0) {
+      console.error(error ?? `No research interest was deleted for id ${id}`);
+      setInterests(previousInterests);
+      alert(error ? `Delete failed: ${error.message}` : "Delete failed: no matching research interest was deleted.");
+      return;
+    }
+
+    await fetchInterests();
   };
 
   return (
@@ -739,41 +861,30 @@ const StartupEditor = () => {
     };
 
     fetchStartup();
-
-    // Subscribe to real-time changes
-    const channel = db
-      .channel('admin_startup_changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'startup', filter: 'id=eq.section' },
-        (payload) => {
-          const data = payload.new as any;
-          if (data) {
-            setTitle(data.title ?? "");
-            setDesc(data.description ?? "");
-            setLinks(data.externalLinks?.map((l: any, i: number) => ({ id: `${i}`, ...l })) ?? []);
-            setPhotoUrl(data.photoUrl ?? "");
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      db.removeChannel(channel);
-    };
   }, []);
 
   const save = async () => {
     setSaving(true);
-    const { error } = await db.from('startup').upsert({
-      id: 'section',
-      title,
-      description: desc,
-      photoUrl,
-      externalLinks: links.map(({ label, url }) => ({ label, url })),
-    });
-    if (error) console.error(error);
-    setSaving(false);
+    try {
+      const { error } = await db.from('startup').upsert({
+        id: 'section',
+        title,
+        description: desc,
+        photoUrl,
+        externalLinks: links.map(({ label, url }) => ({ label, url })),
+      });
+      if (error) {
+        console.error(error);
+        alert(`Save failed: ${error.message}`);
+      } else {
+        alert("Startup settings saved successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Save failed: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -795,9 +906,10 @@ const StartupEditor = () => {
     
     setUploading(true);
     try {
-      const filePath = `startup/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await storage.upload(filePath, file, {
-        contentType: file.type,
+      const webpFile = await convertToWebP(file);
+      const filePath = `startup/${Date.now()}_${webpFile.name}`;
+      const { error: uploadError } = await storage.upload(filePath, webpFile, {
+        contentType: 'image/webp',
         upsert: true
       });
       if (uploadError) {
@@ -805,12 +917,46 @@ const StartupEditor = () => {
       }
 
       const { data } = storage.getPublicUrl(filePath);
-      setPhotoUrl(data.publicUrl);
+      const publicUrl = data.publicUrl;
+      setPhotoUrl(publicUrl);
+
+      // Auto-save to database
+      const { error: dbErr } = await db
+        .from('startup')
+        .update({ photoUrl: publicUrl })
+        .eq('id', 'section');
+      
+      if (dbErr) {
+        console.error("Auto-save startup photo failed:", dbErr);
+        alert(`Startup photo uploaded but save to settings failed: ${dbErr.message}`);
+      } else {
+        alert("Startup photo uploaded and saved successfully!");
+      }
     } catch (err: any) {
       console.error(err);
       alert(`Upload failed: ${err.message}`);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setPhotoUrl("");
+    try {
+      const { error: dbErr } = await db
+        .from('startup')
+        .update({ photoUrl: "" })
+        .eq('id', 'section');
+      
+      if (dbErr) {
+        console.error("Auto-save remove startup photo failed:", dbErr);
+        alert(`Startup photo removed from view but database update failed: ${dbErr.message}`);
+      } else {
+        alert("Startup photo removed and saved successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Remove failed: ${err.message}`);
     }
   };
 
@@ -861,7 +1007,7 @@ const StartupEditor = () => {
               {photoUrl && (
                 <button
                   type="button"
-                  onClick={() => setPhotoUrl("")}
+                  onClick={handleRemovePhoto}
                   className="px-3 py-2 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200 transition"
                 >
                   Remove
@@ -966,14 +1112,19 @@ const FormSubmissionsViewer = () => {
   }, []);
 
   const deleteSubmission = async (id: string) => {
-    const { error } = await db
+    const { data, error } = await db
       .from('contact_submissions')
       .delete()
-      .eq('id', id);
-    if (error) {
-      console.error(error);
-      alert(`Delete failed: ${error.message}`);
+      .eq('id', id)
+      .select('id');
+
+    if (error || getDeletedCount(data) === 0) {
+      console.error(error ?? `No contact submission was deleted for id ${id}`);
+      alert(error ? `Delete failed: ${error.message}` : "Delete failed: no matching contact submission was deleted.");
+      return;
     }
+
+    await fetchSubmissions();
   };
 
   const requestDeleteSubmission = (id: string) => {
@@ -1044,11 +1195,12 @@ interface Publication {
   authors: string;
   venue: string;
   year: string;
+  summary?: string;
 }
 
 const PublicationsEditor = () => {
   const [pubs, setPubs] = useState<Publication[]>([]);
-  const [newPub, setNewPub] = useState<Omit<Publication, "id">>({ title: "", link: "", authors: "", venue: "", year: "" });
+  const [newPub, setNewPub] = useState<Omit<Publication, "id">>({ title: "", link: "", authors: "", venue: "", year: "", summary: "" });
   const [importing, setImporting] = useState(false);
   const [deletingPubIds, setDeletingPubIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{
@@ -1106,7 +1258,7 @@ const PublicationsEditor = () => {
       alert(`Save failed: ${error.message}`);
       return;
     }
-    setNewPub({ title: "", link: "", authors: "", venue: "", year: "" });
+    setNewPub({ title: "", link: "", authors: "", venue: "", year: "", summary: "" });
     await fetchPubs();
   };
 
@@ -1115,11 +1267,16 @@ const PublicationsEditor = () => {
     setDeletingPubIds((ids) => new Set(ids).add(id));
     setPubs((current) => current.filter((pub) => pub.id !== id));
 
-    const { error } = await db.from('publications').delete().eq('id', id);
-    if (error) {
-      console.error(error);
+    const { data, error } = await db
+      .from('publications')
+      .delete()
+      .eq('id', id)
+      .select('id');
+
+    if (error || getDeletedCount(data) === 0) {
+      console.error(error ?? `No publication was deleted for id ${id}`);
       setPubs(previousPubs);
-      alert(`Delete failed: ${error.message}`);
+      alert(error ? `Delete failed: ${error.message}` : "Delete failed: no matching publication was deleted.");
     } else {
       await fetchPubs();
     }
@@ -1169,12 +1326,17 @@ const PublicationsEditor = () => {
 
     const previousPubs = pubs;
     setPubs((current) => current.filter((pub) => !duplicateIds.includes(pub.id)));
-    const { error } = await db.from('publications').delete().in('id', duplicateIds);
+    const { data, error } = await db
+      .from('publications')
+      .delete()
+      .in('id', duplicateIds)
+      .select('id');
 
-    if (error) {
-      console.error(error);
+    const deletedCount = getDeletedCount(data);
+    if (error || deletedCount === 0) {
+      console.error(error ?? "No duplicate publications were deleted.");
       setPubs(previousPubs);
-      alert(`Duplicate removal failed: ${error.message}`);
+      alert(error ? `Duplicate removal failed: ${error.message}` : "Duplicate removal failed: no matching duplicate publications were deleted.");
       return;
     }
 
@@ -1229,6 +1391,7 @@ const PublicationsEditor = () => {
         venue: fields.journal || fields.booktitle || fields.publisher || "",
         year: fields.year || new Date().getFullYear().toString(),
         link: fields.url || (fields.doi ? `https://doi.org/${fields.doi}` : ""),
+        summary: fields.abstract || "",
       });
     }
     return entries;
@@ -1271,40 +1434,70 @@ const PublicationsEditor = () => {
 
     setImporting(true);
     try {
-      // Fetch Works directly using unauthenticated request with CORS supported public API
+      // Fetch Works list summary first
       const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId.trim()}/works`, {
         headers: {
           "Accept": "application/json"
         }
       });
 
-      if (!worksRes.ok) throw new Error("Failed to fetch works from ORCID. Ensure your ORCID iD is correct.");
+      if (!worksRes.ok) throw new Error("Failed to fetch works list from ORCID. Ensure your ORCID iD is correct.");
       const worksData = await worksRes.json();
 
       const groups = worksData.group || [];
-      const newPubsToImport = [];
+      const putCodes = groups
+        .map((g: any) => g["work-summary"]?.[0]?.["put-code"])
+        .filter(Boolean);
+
       const existingTitles = new Set(pubs.map((p) => normalizePublicationTitle(p.title)));
+      const newPubsToImport = [];
 
-      for (const group of groups) {
-        const summary = group["work-summary"]?.[0];
-        if (!summary) continue;
+      // Fetch works details in chunks of 50
+      const batchSize = 50;
+      const fetchedBulk: any[] = [];
+      for (let i = 0; i < putCodes.length; i += batchSize) {
+        const chunk = putCodes.slice(i, i + batchSize);
+        const batchRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId.trim()}/works/${chunk.join(',')}`, {
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+        if (batchRes.ok) {
+          const batchData = await batchRes.json();
+          if (batchData.bulk) {
+            fetchedBulk.push(...batchData.bulk);
+          }
+        }
+      }
 
-        const title = summary.title?.title?.value || "Untitled";
+      for (const bulkItem of fetchedBulk) {
+        const work = bulkItem.work;
+        if (!work) continue;
+
+        const title = work.title?.title?.value || "Untitled";
         const cleanedTitle = normalizePublicationTitle(title);
         if (existingTitles.has(cleanedTitle)) continue;
 
-        const year = summary["publication-date"]?.year?.value || new Date().getFullYear().toString();
-        const venue = summary["journal-title"]?.value || "";
-        const link = summary.url?.value || (summary["external-ids"]?.["external-id"]?.[0]?.["external-id-url"]?.value) || "";
+        const year = work["publication-date"]?.year?.value || new Date().getFullYear().toString();
+        const venue = work["journal-title"]?.value || "";
+        const link = work.url?.value || (work["external-ids"]?.["external-id"]?.[0]?.["external-id-url"]?.value) || "";
         
+        // Parse authors from contributors list
+        const contributorList = work.contributors?.contributor || [];
+        const authorsList = contributorList
+          .map((c: any) => c["credit-name"]?.value)
+          .filter(Boolean);
+        const authors = authorsList.length > 0 ? authorsList.join(", ") : "Aman Sharma";
+
         newPubsToImport.push({
           title,
           year,
           venue,
           link,
-          authors: "Aman Sharma et al."
+          authors,
+          summary: ""
         });
-        
+
         existingTitles.add(cleanedTitle); // avoid duplicates in the same session
       }
 
@@ -1320,6 +1513,7 @@ const PublicationsEditor = () => {
       alert(`ORCID Import Error: ${err.message}`);
     } finally {
       setImporting(false);
+      await fetchPubs();
     }
   };
 
@@ -1401,6 +1595,9 @@ const PublicationsEditor = () => {
               </div>
               <input type="url" placeholder="Link (URL/DOI)" value={newPub.link} onChange={(e) => setNewPub({...newPub, link: e.target.value})} className="flex-1 p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30" />
             </div>
+            <div className="md:col-span-2">
+              <RichTextField placeholder="Research Summary / Abstract" value={newPub.summary || ""} onChange={(value) => setNewPub({...newPub, summary: value})} multiline rows={3} />
+            </div>
           </div>
           <button onClick={addPub} className="w-full sm:w-auto bg-academic-text text-white px-5 py-2.5 rounded-lg hover:bg-black transition font-medium">
             Save Publication
@@ -1422,6 +1619,9 @@ const PublicationsEditor = () => {
                       <RichTextField value={p.venue} onChange={(value) => updatePub(p.id, { venue: value })} placeholder="Venue" className="text-academic-muted text-sm italic" />
                     </div>
                     <input type="url" value={p.link} onChange={(e) => updatePub(p.id, { link: e.target.value })} className="flex-1 p-1 border border-transparent hover:border-academic-border focus:border-academic-brand focus:outline-none text-blue-600 text-sm transition-colors rounded" placeholder="Link URL" />
+                  </div>
+                  <div>
+                    <RichTextField value={p.summary || ""} onChange={(value) => updatePub(p.id, { summary: value })} placeholder="Research Summary" multiline rows={3} />
                   </div>
                 </div>
               </div>
@@ -1456,6 +1656,7 @@ const MediaGallery = () => {
   const [images, setImages] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deletingImageIds, setDeletingImageIds] = useState<Set<string>>(new Set());
+  const [captionStatus, setCaptionStatus] = useState<{[id: string]: 'idle' | 'saving' | 'saved'}>({});
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     message: string;
@@ -1512,9 +1713,10 @@ const MediaGallery = () => {
     
     setUploading(true);
     try {
-      const filePath = `media/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await storage.upload(filePath, file, {
-        contentType: file.type,
+      const webpFile = await convertToWebP(file);
+      const filePath = `media/${Date.now()}_${webpFile.name}`;
+      const { error: uploadError } = await storage.upload(filePath, webpFile, {
+        contentType: 'image/webp',
         upsert: true
       });
       if (uploadError) {
@@ -1539,16 +1741,24 @@ const MediaGallery = () => {
     setDeletingImageIds((ids) => new Set(ids).add(docId));
     setImages((current) => current.filter((image) => image.id !== docId));
 
-    const filePath = getPhotosStoragePath(url);
-    if (filePath) {
-      await storage.remove([filePath]).catch((err) => console.error(err));
-    }
-    const { error } = await db.from('media_gallery').delete().eq('id', docId);
-    if (error) {
-      console.error(error);
+    const { data, error } = await db
+      .from('media_gallery')
+      .delete()
+      .eq('id', docId)
+      .select('id');
+
+    if (error || getDeletedCount(data) === 0) {
+      console.error(error ?? `No gallery image was deleted for id ${docId}`);
       setImages(previousImages);
-      alert(`Delete failed: ${error.message}`);
+      alert(error ? `Delete failed: ${error.message}` : "Delete failed: no matching gallery image was deleted.");
     } else {
+      const filePath = getPhotosStoragePath(url);
+      if (filePath) {
+        const { error: storageError } = await storage.remove([filePath]);
+        if (storageError) {
+          console.error(storageError);
+        }
+      }
       await fetchImages();
     }
 
@@ -1569,6 +1779,25 @@ const MediaGallery = () => {
         void deleteImage(docId, url);
       },
     });
+  };
+
+  const updateCaption = async (id: string, caption: string) => {
+    setCaptionStatus((prev) => ({ ...prev, [id]: 'saving' }));
+    const { error } = await db
+      .from('media_gallery')
+      .update({ caption })
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      alert(`Failed to update caption: ${error.message}`);
+      setCaptionStatus((prev) => ({ ...prev, [id]: 'idle' }));
+    } else {
+      setCaptionStatus((prev) => ({ ...prev, [id]: 'saved' }));
+      setTimeout(() => {
+        setCaptionStatus((prev) => ({ ...prev, [id]: 'idle' }));
+      }, 2000);
+      await fetchImages();
+    }
   };
 
   return (
@@ -1593,18 +1822,49 @@ const MediaGallery = () => {
         </div>
         <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
           {images.map((img) => (
-            <div key={img.id} className="relative group rounded-xl overflow-hidden shadow-sm border border-academic-border bg-academic-surface aspect-square flex items-center justify-center">
-              <img src={img.url} alt="gallery" className="object-cover w-full h-full" />
-              <button
-                onClick={() => requestDeleteImage(img.id, img.url)}
-                disabled={deletingImageIds.has(img.id)}
-                className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-100 sm:bg-black/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity backdrop-blur-[1px] disabled:cursor-wait"
-                aria-label="Delete image"
-              >
-                <div className="bg-red-500 text-white p-3 rounded-full hover:scale-110 transition-transform shadow-lg">
-                  <Trash2 size={24} />
+            <div key={img.id} className="flex flex-col bg-white border border-academic-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div className="relative aspect-square bg-academic-surface flex items-center justify-center group">
+                <img src={img.url} alt="gallery" className="object-cover w-full h-full" />
+                <button
+                  onClick={() => requestDeleteImage(img.id, img.url)}
+                  disabled={deletingImageIds.has(img.id)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete image"
+                >
+                  <div className="bg-red-500 text-white p-2.5 rounded-full hover:scale-110 transition-transform">
+                    <Trash2 size={20} />
+                  </div>
+                </button>
+              </div>
+              <div className="p-3 border-t border-academic-border bg-academic-surface/30 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Add caption..."
+                  defaultValue={img.caption || ""}
+                  onBlur={async (e) => {
+                    const newCaption = e.target.value;
+                    if (newCaption !== (img.caption || "")) {
+                      await updateCaption(img.id, newCaption);
+                    }
+                  }}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      const target = e.target as HTMLInputElement;
+                      target.blur();
+                    }
+                  }}
+                  className="w-full text-xs p-2 border border-academic-border rounded bg-white text-academic-text focus:outline-none focus:border-academic-brand"
+                />
+                <div className="flex justify-between items-center text-[10px] px-0.5">
+                  <span className="text-academic-muted/50 font-sans">Press Enter or blur to save</span>
+                  {captionStatus[img.id] === 'saving' && (
+                    <span className="text-academic-brand font-bold animate-pulse font-sans">Saving...</span>
+                  )}
+                  {captionStatus[img.id] === 'saved' && (
+                    <span className="text-emerald-600 font-bold font-sans">✓ Saved</span>
+                  )}
                 </div>
-              </button>
+              </div>
             </div>
           ))}
           {images.length === 0 && (

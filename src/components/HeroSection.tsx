@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, FileText, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import amanSharmaPhoto from '../assets/aman sharma photo.png';
+import amanSharmaPhoto from '../assets/aman sharma photo.webp';
 import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
+import { sanitizeHtml } from '../lib/sanitizeHtml';
 
 const CHEMISTRY_POINTS = [
   { label: 'C', className: 'left-[8%] top-[18%]' },
@@ -17,9 +18,11 @@ const CHEMISTRY_POINTS = [
 export const HeroSection = () => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState({
+    name: "Dr Aman Sharma, MRSC",
     heroSubtitle: "Sustainability Innovator & Researcher",
     heroRoles: "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
     heroDesc: "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
+    heroNameStyle: "classic",
     profilePicUrl: ""
   });
 
@@ -33,9 +36,11 @@ export const HeroSection = () => {
       
       if (!error && data) {
         setSettings({
+          name: data.name || "Dr Aman Sharma, MRSC",
           heroSubtitle: data.heroSubtitle || settings.heroSubtitle,
           heroRoles: data.heroRoles || settings.heroRoles,
           heroDesc: data.heroDesc || settings.heroDesc,
+          heroNameStyle: data.heroNameStyle || "classic",
           profilePicUrl: data.profilePicUrl || ""
         });
       }
@@ -53,9 +58,11 @@ export const HeroSection = () => {
           const data = payload.new as any;
           if (data) {
             setSettings({
+              name: data.name || "Dr Aman Sharma, MRSC",
               heroSubtitle: data.heroSubtitle || settings.heroSubtitle,
               heroRoles: data.heroRoles || settings.heroRoles,
               heroDesc: data.heroDesc || settings.heroDesc,
+              heroNameStyle: data.heroNameStyle || "classic",
               profilePicUrl: data.profilePicUrl || ""
             });
           }
@@ -82,8 +89,19 @@ export const HeroSection = () => {
     }, 100);
   };
 
+  const nameVal = (settings.name || "Dr Aman Sharma, MRSC")
+    .replace(/\bsharma\b/gi, 'Sharma')
+    .replace(/\bMSRC\b/g, 'MRSC')
+    .replace(/\s+,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  const commaIndex = nameVal.indexOf(',');
+  const mainName = commaIndex === -1 ? nameVal : nameVal.slice(0, commaIndex).trim();
+  const nameSuffix = commaIndex === -1 ? '' : nameVal.slice(commaIndex + 1).trim();
+  const nameStyleClass = `name-display-${settings.heroNameStyle || 'classic'}`;
+
   return (
-    <section className="relative min-h-screen flex items-start justify-center pt-16 pb-14 sm:pt-20 sm:pb-16 lg:pt-24 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
+    <section className="relative min-h-screen flex items-center justify-center pt-20 pb-10 sm:pt-24 sm:pb-16 lg:pt-24 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
       <div className="chemistry-grid absolute inset-0 z-0 opacity-70" />
       <div className="absolute inset-x-0 top-0 z-0 h-16 border-b border-academic-border bg-white/80 sm:h-20 lg:h-24" />
       <div className="pointer-events-none absolute inset-0 z-0 hidden sm:block">
@@ -103,27 +121,32 @@ export const HeroSection = () => {
         ))}
       </div>
       
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10 grid w-full items-center gap-7 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="order-2 flex flex-col items-start text-left lg:order-1">
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10 grid w-full items-center gap-8 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="order-2 flex flex-col items-center text-center lg:order-1 lg:items-start lg:text-left">
         
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="editorial-subheading mb-4 sm:mb-8 flex items-center gap-3"
+          className="editorial-subheading mb-4 flex items-center justify-center gap-3 sm:mb-7 lg:justify-start"
         >
           <span className="w-8 h-px bg-academic-brand"></span>
-          <span dangerouslySetInnerHTML={{ __html: settings.heroSubtitle }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle) }} />
+          <span className="w-8 h-px bg-academic-brand"></span>
         </motion.div>
 
         <motion.h1 
-          className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-academic-accent leading-none mb-5 sm:mb-8"
+          className={`${nameStyleClass} max-w-full text-[2.25rem] min-[380px]:text-[2.6rem] sm:text-5xl lg:text-6xl xl:text-7xl text-academic-accent leading-[0.95] mb-5 sm:mb-7`}
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
-          Dr. Aman <br />
-          <span className="text-academic-brand italic pr-4">Sharma</span>
+          <span>{mainName}</span>
+          {nameSuffix && (
+            <span className="whitespace-nowrap text-[0.72em]">
+              , {nameSuffix}
+            </span>
+          )}
         </motion.h1>
 
         <motion.p 
@@ -132,20 +155,20 @@ export const HeroSection = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1.5, delay: 0.4 }}
         >
-          <span dangerouslySetInnerHTML={{ __html: settings.heroRoles }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroRoles) }} />
         </motion.p>
 
         <motion.p
-          className="text-base sm:text-lg md:text-xl text-academic-text max-w-3xl mb-7 sm:mb-14 leading-relaxed font-serif font-semibold"
+          className="text-base sm:text-lg md:text-xl text-academic-text max-w-3xl mb-7 sm:mb-12 leading-relaxed font-serif font-semibold"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1.5, delay: 0.6 }}
         >
-          <span dangerouslySetInnerHTML={{ __html: settings.heroDesc }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroDesc) }} />
         </motion.p>
 
         <motion.div 
-          className="flex w-full flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+          className="flex w-full flex-col sm:flex-row items-stretch justify-center gap-3 sm:items-center sm:gap-4 lg:justify-start"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.8 }}
@@ -171,9 +194,9 @@ export const HeroSection = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
         >
-          <div className="absolute h-64 w-64 rounded-full border border-academic-brand/25 sm:h-[22rem] sm:w-[22rem] md:h-[30rem] md:w-[30rem]" />
-          <div className="absolute h-56 w-56 rounded-full border border-academic-accent/10 sm:h-[18rem] sm:w-[18rem] md:h-[25rem] md:w-[25rem]" />
-          <div className="relative h-56 w-56 overflow-hidden rounded-full border-4 border-white bg-white shadow-2xl ring-1 ring-academic-border min-[420px]:h-64 min-[420px]:w-64 sm:h-72 sm:w-72 md:h-[26rem] md:w-[26rem]">
+          <div className="absolute h-56 w-56 rounded-full border border-academic-brand/25 min-[420px]:h-64 min-[420px]:w-64 sm:h-[22rem] sm:w-[22rem] md:h-[30rem] md:w-[30rem]" />
+          <div className="absolute h-48 w-48 rounded-full border border-academic-accent/10 min-[420px]:h-56 min-[420px]:w-56 sm:h-[18rem] sm:w-[18rem] md:h-[25rem] md:w-[25rem]" />
+          <div className="relative h-48 w-48 overflow-hidden rounded-full border-4 border-white bg-white shadow-2xl ring-1 ring-academic-border min-[420px]:h-56 min-[420px]:w-56 sm:h-72 sm:w-72 md:h-[26rem] md:w-[26rem]">
             <img
               src={settings.profilePicUrl || amanSharmaPhoto}
               alt="Dr. Aman Sharma"

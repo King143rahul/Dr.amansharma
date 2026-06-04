@@ -1,10 +1,4 @@
-import { motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
-
-const getWindowSize = () => ({
-  width: typeof window === 'undefined' ? 0 : window.innerWidth,
-  height: typeof window === 'undefined' ? 0 : window.innerHeight,
-});
+import { useEffect, useRef } from 'react';
 
 const seededValue = (seed: number) => {
   const value = Math.sin(seed * 999) * 10000;
@@ -12,33 +6,98 @@ const seededValue = (seed: number) => {
 };
 
 export const ParticleBackground = () => {
-  const [windowSize, setWindowSize] = useState(getWindowSize);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const handleResize = () => {
-      setWindowSize(getWindowSize());
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    const startTime = Date.now();
+
+    // Generate particle configuration statically
+    const particleConfig = Array.from({ length: 30 }).map((_, i) => ({
+      ratioX: seededValue(i + 1),
+      ratioY: seededValue(i + 31),
+      size: seededValue(i + 61) * 4 + 1,
+      duration: (seededValue(i + 91) * 30 + 20) * 1000, // convert to ms
+      delay: seededValue(i + 121) * -40 * 1000, // convert to ms
+      driftXOne: seededValue(i + 151) * 100 - 50,
+      driftXTwo: seededValue(i + 181) * 100 - 50,
+    }));
+
+    let lastWidth = window.innerWidth;
+    let lastHeight = window.innerHeight;
+
+    const resizeCanvas = (force = false) => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
+      // Only resize if width changes or height changes significantly (prevents address bar lag on mobile)
+      if (force || width !== lastWidth || Math.abs(height - lastHeight) > 80) {
+        canvas.width = width;
+        canvas.height = height;
+        lastWidth = width;
+        lastHeight = height;
+      }
     };
+
+    resizeCanvas(true);
     
+    const handleResize = () => resizeCanvas(false);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const now = Date.now();
+      const elapsed = now - startTime;
+
+      particleConfig.forEach((p) => {
+        // Compute animation progress
+        const t = (elapsed - p.delay) % p.duration;
+        const progress = t / p.duration;
+
+        // Compute Y coordinate
+        const startY = p.ratioY * canvas.height;
+        const y = startY - progress * (canvas.height * 1.5);
+
+        // Interpolate X coordinate
+        const startX = p.ratioX * canvas.width;
+        let x = startX;
+        if (progress < 0.5) {
+          x = startX + (progress / 0.5) * p.driftXOne;
+        } else {
+          x = startX + p.driftXOne + ((progress - 0.5) / 0.5) * (p.driftXTwo - p.driftXOne);
+        }
+
+        // Interpolate Opacity
+        let opacity = 0;
+        if (progress < 0.5) {
+          opacity = (progress / 0.5) * 0.4;
+        } else {
+          opacity = 0.4 - ((progress - 0.5) / 0.5) * 0.4;
+        }
+
+        // Draw particle (using academic-brand color #05603f, i.e., rgb(5, 96, 63))
+        ctx.beginPath();
+        ctx.arc(x, y, p.size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(5, 96, 63, ${opacity})`;
+        ctx.fill();
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
-
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 30 }).map((_, i) => ({
-        id: i,
-        x: seededValue(i + 1) * windowSize.width,
-        y: seededValue(i + 31) * windowSize.height,
-        size: seededValue(i + 61) * 4 + 1,
-        duration: seededValue(i + 91) * 30 + 20,
-        delay: seededValue(i + 121) * -40,
-        driftXOne: seededValue(i + 151) * 100 - 50,
-        driftXTwo: seededValue(i + 181) * 100 - 50,
-      })),
-    [windowSize.height, windowSize.width],
-  );
-
-  if (windowSize.width === 0) return null;
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -48,33 +107,10 @@ export const ParticleBackground = () => {
         <div className="absolute bottom-1/4 right-1/4 w-[50rem] h-[50rem] bg-emerald-900/5 rounded-full blur-[150px]" />
       </div>
       
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute rounded-full bg-academic-brand/20 blur-[1px]"
-          style={{
-            width: particle.size,
-            height: particle.size,
-            x: particle.x,
-            y: particle.y,
-          }}
-          animate={{
-            y: [particle.y, particle.y - windowSize.height * 1.5],
-            x: [
-              particle.x, 
-              particle.x + particle.driftXOne, 
-              particle.x + particle.driftXTwo
-            ],
-            opacity: [0, 0.4, 0],
-          }}
-          transition={{
-            duration: particle.duration,
-            repeat: Infinity,
-            delay: particle.delay,
-            ease: "linear",
-          }}
-        />
-      ))}
+      <canvas 
+        ref={canvasRef} 
+        className="absolute inset-0 w-full h-full blur-[1px]"
+      />
     </div>
   );
 };

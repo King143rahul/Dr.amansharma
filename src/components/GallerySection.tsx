@@ -1,7 +1,22 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../lib/supabase';
 import { Image, X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+
+const getWebPFallbackUrl = (url?: string) => {
+  if (!url) return "";
+  return url.replace(/\.(jpe?g|png)(?=($|\?))/i, ".webp");
+};
+
+const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = event.currentTarget;
+  const fallbackUrl = getWebPFallbackUrl(img.currentSrc || img.src);
+
+  if (fallbackUrl && fallbackUrl !== img.src) {
+    img.src = fallbackUrl;
+  }
+};
 
 export const GallerySection = () => {
   const [images, setImages] = useState<any[]>([]);
@@ -71,7 +86,7 @@ export const GallerySection = () => {
   };
 
   return (
-    <section className="py-20 sm:py-24 lg:py-32 bg-academic-surface relative z-10 border-b border-academic-border">
+    <section className="py-10 sm:py-14 lg:py-16 bg-academic-surface relative z-10 border-b border-academic-border">
       <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -127,12 +142,18 @@ export const GallerySection = () => {
                   alt="Academic gallery visual item"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   loading="lazy"
+                  onError={handleImageError}
                 />
                 <div className="absolute inset-0 bg-academic-accent/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
                   <div className="bg-white/90 text-academic-accent p-3 rounded-full shadow-md scale-75 group-hover:scale-100 transition-all duration-300 ease-out">
                     <ZoomIn size={20} strokeWidth={2} />
                   </div>
                 </div>
+                {item.caption && (
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-4 text-white text-xs sm:text-sm font-sans font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 leading-normal pointer-events-none">
+                    {item.caption}
+                  </div>
+                )}
               </motion.div>
             ))}
           </div>
@@ -140,63 +161,74 @@ export const GallerySection = () => {
       </div>
 
       {/* Lightbox / Modal */}
-      <AnimatePresence>
-        {selectedIdx !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedIdx(null)}
-            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4 md:p-8"
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedIdx(null)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition z-[10000]"
-              aria-label="Close Lightbox"
-            >
-              <X size={24} />
-            </button>
-
-            {/* Left navigation */}
-            <button
-              onClick={handlePrev}
-              className="absolute left-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition z-[10000] hidden sm:block"
-              aria-label="Previous image"
-            >
-              <ChevronLeft size={28} />
-            </button>
-
-            {/* Main content viewport */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedIdx !== null && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative max-w-5xl max-h-[80vh] flex flex-col items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedIdx(null)}
+              className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4 md:p-8"
             >
-              <img
-                src={images[selectedIdx]?.url}
-                alt="Selected academic item"
-                className="max-w-full max-h-[72vh] sm:max-h-[75vh] object-contain rounded border border-white/10 shadow-2xl"
-              />
-              <div className="mt-4 text-white/75 font-sans text-sm font-medium bg-black/40 px-4 py-1.5 rounded-full border border-white/5">
-                {selectedIdx + 1} of {images.length}
-              </div>
-            </motion.div>
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedIdx(null)}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition z-[10000] cursor-pointer"
+                aria-label="Close Lightbox"
+              >
+                <X size={24} />
+              </button>
 
-            {/* Right navigation */}
-            <button
-              onClick={handleNext}
-              className="absolute right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition z-[10000] hidden sm:block"
-              aria-label="Next image"
-            >
-              <ChevronRight size={28} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/* Left navigation */}
+              <button
+                onClick={handlePrev}
+                className="absolute left-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition z-[10000] hidden sm:block cursor-pointer"
+                aria-label="Previous image"
+              >
+                <ChevronLeft size={28} />
+              </button>
+
+              {/* Main content viewport */}
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative max-w-5xl max-h-[80vh] flex flex-col items-center"
+              >
+                <div className="relative max-w-full max-h-[72vh] sm:max-h-[75vh] rounded overflow-hidden border border-white/10 shadow-2xl">
+                  <img
+                    src={images[selectedIdx]?.url}
+                    alt="Selected academic item"
+                    className="w-full h-full object-contain max-h-[72vh] sm:max-h-[75vh]"
+                    onError={handleImageError}
+                  />
+                  {images[selectedIdx]?.caption && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-xl text-white text-center font-sans text-sm sm:text-base bg-black/70 px-4 py-2 rounded-lg border border-white/10 shadow-lg leading-relaxed pointer-events-none backdrop-blur-[2px]">
+                      {images[selectedIdx].caption}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 text-white/75 font-sans text-sm font-medium bg-black/40 px-4 py-1.5 rounded-full border border-white/5">
+                  {selectedIdx + 1} of {images.length}
+                </div>
+              </motion.div>
+
+              {/* Right navigation */}
+              <button
+                onClick={handleNext}
+                className="absolute right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition z-[10000] hidden sm:block cursor-pointer"
+                aria-label="Next image"
+              >
+                <ChevronRight size={28} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </section>
   );
 };

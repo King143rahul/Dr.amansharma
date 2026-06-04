@@ -1,5 +1,7 @@
 import { BookOpen, ExternalLink, GraduationCap, Mail, MapPin, Microscope, Network } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { db } from '../lib/supabase';
 
 const QUICK_LINKS = [
   { label: 'Home', href: '/' },
@@ -32,21 +34,67 @@ const SOCIAL_LINKS = [
 ];
 
 export const Footer = () => {
+  const [name, setName] = useState("Dr Aman Sharma, MRSC");
+  const [footerNameStyle, setFooterNameStyle] = useState("clean");
+
+  useEffect(() => {
+    const fetchName = async () => {
+      try {
+        const { data, error } = await db
+          .from('general_settings')
+          .select('name,footerNameStyle')
+          .eq('id', 'settings')
+          .single();
+        if (!error && data && data.name) {
+          setName(data.name);
+          setFooterNameStyle(data.footerNameStyle || "clean");
+        }
+      } catch (err) {
+        console.error("Error fetching name for footer:", err);
+      }
+    };
+    fetchName();
+
+    const channel = db
+      .channel('footer_name_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'general_settings', filter: 'id=eq.settings' },
+        (payload) => {
+          const data = payload.new as any;
+          if (data && data.name) {
+            setName(data.name);
+            setFooterNameStyle(data.footerNameStyle || "clean");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  const displayName = name
+    .replace(/\bsharma\b/gi, 'Sharma')
+    .replace(/\bMSRC\b/g, 'MRSC')
+    .replace(/\s+,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  const copyrightName = displayName.replace(/\s*,?\s*MRSC\b/gi, '').trim();
+
   return (
     <footer className="relative z-10 border-t border-academic-border bg-academic-accent text-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 lg:grid-cols-[1.35fr_0.75fr_1fr] lg:px-8">
+      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-8 lg:grid-cols-[1.35fr_0.75fr_1fr] lg:px-8">
         <div>
-          <div className="mb-4 font-serif text-3xl font-bold">Dr. Aman Sharma</div>
-          <p className="max-w-xl text-base font-medium leading-relaxed text-white/80">
-            Assistant Professor of Chemistry in Bengaluru, materials chemist, MRSC, and founder of AMSH Endeavours, working across green chemistry, nanotechnology, wastewater remediation, and waste-to-wealth research.
-          </p>
-          <div className="mt-6 flex flex-col gap-3 text-sm font-bold uppercase tracking-wider text-white/80 sm:flex-row sm:flex-wrap">
+          <div className={`mb-4 text-3xl leading-none ${`name-display-${footerNameStyle}`}`}>{displayName}</div>
+          <div className="mt-4 flex flex-col gap-3 text-sm font-bold uppercase tracking-wider text-white/80 sm:flex-row sm:flex-wrap">
             <a
-              href="mailto:amansharmapdh@gmail.com"
+              href="mailto:AmanSharmaphd@gmail.com"
               className="inline-flex items-center gap-2 transition-colors hover:text-white"
             >
               <Mail size={16} />
-              amansharmapdh@gmail.com
+              AmanSharmaphd@gmail.com
             </a>
             <span className="inline-flex items-center gap-2">
               <MapPin size={16} />
@@ -93,9 +141,8 @@ export const Footer = () => {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6 text-sm font-semibold text-white/60 md:flex-row md:items-center md:justify-between lg:px-8">
-          <p>&copy; {new Date().getFullYear()} Dr. Aman Sharma. All rights reserved.</p>
-          <p>Founder, AMSH Endeavours | S-VYASA University Bengaluru</p>
+        <div className="mx-auto flex max-w-6xl justify-center px-6 py-6 text-center text-sm font-semibold text-white/60 lg:px-8">
+          <p>&copy; {new Date().getFullYear()} {copyrightName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

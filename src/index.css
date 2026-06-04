@@ -1,4 +1,4 @@
-@import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap";
 @import "tailwindcss";
 
 @theme {
@@ -12,6 +12,7 @@
 
   --font-sans: "Inter", sans-serif;
   --font-serif: "Playfair Display", serif;
+  --font-display: "Cormorant Garamond", serif;
 }
 
 @layer base {
@@ -56,6 +57,26 @@
     background-size: 48px 48px;
   }
 
+  .name-display-classic {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  .name-display-clean {
+    font-family: var(--font-sans);
+    font-weight: 700;
+  }
+
+  .name-display-editorial {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 700;
+  }
+
+  .mobile-section {
+    @apply py-10 sm:py-14 lg:py-16;
+  }
+
   @media (max-width: 640px) {
     body {
       font-size: 16px;
@@ -68,5 +89,58 @@
     .chemistry-grid {
       background-size: 32px 32px;
     }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(5, 96, 99, 0.2);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(5, 96, 99, 0.4);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .marquee-container {
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+    mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+  }
+
+  .marquee-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 1.5rem;
+    animation: marquee 35s linear infinite;
+    width: max-content;
+    padding: 1rem 0;
+  }
+
+  .marquee-content:hover {
+    animation-play-state: paused;
   }
 }

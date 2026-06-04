@@ -55,7 +55,7 @@ const integrations = [
 
 export default function IntegrationsSection() {
   return (
-    <section className="relative z-10 border-b border-academic-border bg-white py-24">
+    <section className="relative z-10 border-b border-academic-border bg-white py-12 sm:py-16">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
         <div>
           <p className="editorial-subheading">Research Network</p>

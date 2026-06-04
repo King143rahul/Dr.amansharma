@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Atom } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NavHeader from './ui/nav-header';
+import { db } from '../lib/supabase';
 
 const NAV_LINKS = [
   { name: 'Home', href: '/' },
@@ -15,20 +16,59 @@ const NAV_LINKS = [
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const [name, setName] = useState("Dr Aman Sharma, MRSC");
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
       
       const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScroll > 0) {
-        setScrollProgress((window.scrollY / totalScroll) * 100);
+      if (progressBarRef.current && totalScroll > 0) {
+        const progress = (window.scrollY / totalScroll) * 100;
+        progressBarRef.current.style.width = `${progress}%`;
       }
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchName = async () => {
+      try {
+        const { data, error } = await db
+          .from('general_settings')
+          .select('name')
+          .eq('id', 'settings')
+          .single();
+        if (!error && data && data.name) {
+          setName(data.name);
+        }
+      } catch (err) {
+        console.error("Error fetching name for navbar:", err);
+      }
+    };
+
+    fetchName();
+
+    const channel = db
+      .channel('navbar_name_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'general_settings', filter: 'id=eq.settings' },
+        (payload) => {
+          const data = payload.new as any;
+          if (data && data.name) {
+            setName(data.name);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      db.removeChannel(channel);
+    };
   }, []);
 
   // Keep route transitions anchored at the top of each page.
@@ -47,8 +87,9 @@ export const Navbar = () => {
     >
       {/* Scroll Progress Bar */}
       <div 
+        ref={progressBarRef}
         className="absolute top-0 left-0 h-0.5 bg-gradient-to-r from-academic-brand via-emerald-500 to-teal-400 transition-all duration-100 ease-out z-50" 
-        style={{ width: `${scrollProgress}%` }}
+        style={{ width: '0%' }}
       />
       <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
         <Link 
@@ -58,7 +99,9 @@ export const Navbar = () => {
           <div className="text-academic-brand group-hover/logo:rotate-360 transition-transform duration-1000 ease-in-out">
             <Atom size={24} className="animate-[spin_12s_linear_infinite]" strokeWidth={1.8} />
           </div>
-          <span className="truncate tracking-tight text-lg sm:text-xl">Dr. Aman Sharma</span>
+          <span className="truncate tracking-tight text-base sm:text-xl">
+            {name.replace(/\bsharma\b/gi, 'Sharma').replace(/\bMSRC\b/g, 'MRSC').replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ').replace(/\s*,?\s*MRSC\b/gi, '').trim()}
+          </span>
         </Link>
 
         {/* Desktop Nav */}

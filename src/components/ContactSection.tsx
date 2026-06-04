@@ -12,7 +12,7 @@ export const ContactSection = () => {
   const [statusMsg, setStatusMsg] = useState('');
 
   const [contactInfo, setContactInfo] = useState({
-    email: 'amansharmapdh@gmail.com',
+    email: 'AmanSharmaphd@gmail.com',
     linkedin: 'https://www.linkedin.com/in/amansharmaphd/',
     orcid: 'https://orcid.org/0000-0001-5024-292X',
     whatsapp: ''
@@ -29,7 +29,7 @@ export const ContactSection = () => {
         
         if (!error && data) {
           setContactInfo({
-            email: data.contactEmail || 'amansharmapdh@gmail.com',
+            email: data.contactEmail || 'AmanSharmaphd@gmail.com',
             linkedin: data.contactLinkedIn || 'https://www.linkedin.com/in/amansharmaphd/',
             orcid: data.contactOrcid || 'https://orcid.org/0000-0001-5024-292X',
             whatsapp: data.contactWhatsApp || ''
@@ -52,7 +52,7 @@ export const ContactSection = () => {
           const data = payload.new as any;
           if (data) {
             setContactInfo({
-              email: data.contactEmail || 'amansharmapdh@gmail.com',
+              email: data.contactEmail || 'AmanSharmaphd@gmail.com',
               linkedin: data.contactLinkedIn || 'https://www.linkedin.com/in/amansharmaphd/',
               orcid: data.contactOrcid || 'https://orcid.org/0000-0001-5024-292X',
               whatsapp: data.contactWhatsApp || ''
@@ -95,7 +95,7 @@ export const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="py-20 sm:py-24 lg:py-32 bg-academic-surface relative z-10">
+    <section id="contact" className="py-10 sm:py-14 lg:py-16 bg-academic-surface relative z-10">
       <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

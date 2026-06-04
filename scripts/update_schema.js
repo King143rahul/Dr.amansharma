@@ -48,7 +48,7 @@ async function updateSchema() {
       { name: 'publicationsValue', type: 'text', defaultVal: "'15+'" },
       { name: 'grantsValue', type: 'text', defaultVal: "'2'" },
       { name: 'conferencesValue', type: 'text', defaultVal: "'10+'" },
-      { name: 'contactEmail', type: 'text', defaultVal: "'amansharmapdh@gmail.com'" },
+      { name: 'contactEmail', type: 'text', defaultVal: "'AmanSharmaphd@gmail.com'" },
       { name: 'contactLinkedIn', type: 'text', defaultVal: "'https://www.linkedin.com/in/amansharmaphd/'" },
       { name: 'contactOrcid', type: 'text', defaultVal: "'https://orcid.org/0000-0000-0000-0000'" },
       { name: 'contactWhatsApp', type: 'text', defaultVal: "''" }
@@ -70,7 +70,7 @@ async function updateSchema() {
         "publicationsValue" = COALESCE("publicationsValue", '15+'),
         "grantsValue" = COALESCE("grantsValue", '2'),
         "conferencesValue" = COALESCE("conferencesValue", '10+'),
-        "contactEmail" = COALESCE("contactEmail", 'amansharmapdh@gmail.com'),
+        "contactEmail" = COALESCE("contactEmail", 'AmanSharmaphd@gmail.com'),
         "contactLinkedIn" = COALESCE("contactLinkedIn", 'https://www.linkedin.com/in/amansharmaphd/'),
         "contactOrcid" = COALESCE("contactOrcid", 'https://orcid.org/0000-0000-0000-0000'),
         "contactWhatsApp" = COALESCE("contactWhatsApp", '')

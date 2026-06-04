@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Leaf, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
+import { sanitizeHtml } from '../lib/sanitizeHtml';
 
 export const StartupSection = () => {
   const [data, setData] = useState<any>(null);
@@ -54,7 +55,7 @@ export const StartupSection = () => {
   const plainTitle = title.replace(/<[^>]*>/g, "");
 
   return (
-    <section id="startup" className="py-20 sm:py-24 lg:py-32 bg-academic-bg relative z-10 border-b border-academic-border">
+    <section id="startup" className="py-10 sm:py-14 lg:py-16 bg-academic-bg relative z-10 border-b border-academic-border">
       <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
         <div className="border border-academic-border bg-white relative">
           <div className="p-5 sm:p-10 md:p-16 lg:p-20 flex flex-col lg:flex-row gap-10 sm:gap-14 lg:gap-16 items-center">
@@ -70,7 +71,7 @@ export const StartupSection = () => {
               </div>
               <h2
                 className="text-3xl sm:text-4xl md:text-6xl font-serif font-semibold mb-6 text-academic-accent tracking-tight break-words"
-                dangerouslySetInnerHTML={{ __html: title }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }}
               />
               {loading ? (
                 <div className="animate-pulse space-y-4 mb-10">
@@ -81,7 +82,7 @@ export const StartupSection = () => {
               ) : (
                 <p
                   className="text-academic-muted text-base sm:text-xl mb-8 sm:mb-10 leading-relaxed font-sans font-medium whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: description }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
                 />
               )}
               
@@ -115,15 +116,10 @@ export const StartupSection = () => {
                     rel="noopener noreferrer"
                     className="w-full sm:w-auto px-6 sm:px-8 py-4 bg-academic-brand text-white font-sans text-sm sm:text-base font-bold tracking-wider uppercase hover:bg-emerald-800 transition-colors duration-500 flex items-center justify-center gap-3 group"
                   >
-                    <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                    <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(link.label) }} />
                     <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-500" />
                   </a>
                 ))}
-                {links.length === 0 && !loading && (
-                  <button className="w-full sm:w-auto px-6 sm:px-8 py-4 bg-academic-brand text-white font-sans text-sm sm:text-base font-bold tracking-wider uppercase opacity-50 cursor-not-allowed flex items-center justify-center gap-3">
-                    Website Coming Soon
-                  </button>
-                )}
               </div>
             </motion.div>
 
