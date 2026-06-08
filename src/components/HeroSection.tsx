@@ -8,7 +8,6 @@ import { sanitizeHtml } from '../lib/sanitizeHtml';
 
 const CHEMISTRY_POINTS = [
   { label: 'C', className: 'left-[8%] top-[18%]' },
-  { label: 'N', className: 'left-[21%] top-[42%]' },
   { label: 'O', className: 'left-[12%] bottom-[20%]' },
   { label: 'H', className: 'right-[14%] top-[22%]' },
   { label: 'Fe', className: 'right-[26%] top-[48%]' },
@@ -98,7 +97,10 @@ export const HeroSection = () => {
   const commaIndex = nameVal.indexOf(',');
   const mainName = commaIndex === -1 ? nameVal : nameVal.slice(0, commaIndex).trim();
   const nameSuffix = commaIndex === -1 ? '' : nameVal.slice(commaIndex + 1).trim();
-  const nameStyleClass = `name-display-${settings.heroNameStyle || 'classic'}`;
+  
+  const nameParts = mainName.split(' ');
+  const lastName = nameParts.pop();
+  const restName = nameParts.join(' ');
 
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-20 pb-10 sm:pt-24 sm:pb-16 lg:pt-24 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
@@ -136,14 +138,17 @@ export const HeroSection = () => {
         </motion.div>
 
         <motion.h1 
-          className={`${nameStyleClass} max-w-full text-[2.25rem] min-[380px]:text-[2.6rem] sm:text-5xl lg:text-6xl xl:text-7xl text-academic-accent leading-[0.95] mb-5 sm:mb-7`}
+          className="font-serif font-bold max-w-full text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-academic-accent leading-[1.1] mb-5 sm:mb-8"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
-          <span>{mainName}</span>
+          <span>
+            {restName}{' '}
+            <span className="text-academic-brand italic">{lastName}</span>
+          </span>
           {nameSuffix && (
-            <span className="whitespace-nowrap text-[0.72em]">
+            <span className="whitespace-nowrap text-[0.5em] align-baseline font-sans not-italic text-academic-muted">
               , {nameSuffix}
             </span>
           )}

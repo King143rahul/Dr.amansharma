@@ -12,7 +12,7 @@ export const ParticleBackground = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
     let animationFrameId: number;
@@ -51,7 +51,8 @@ export const ParticleBackground = () => {
     window.addEventListener('resize', handleResize);
 
     const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff'; // Match bg-academic-bg
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       const now = Date.now();
       const elapsed = now - startTime;
 
@@ -101,16 +102,22 @@ export const ParticleBackground = () => {
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute inset-0 bg-academic-bg">
-        {/* Extremely subtle radial gradients for depth */}
-        <div className="absolute top-1/4 left-1/4 w-[40rem] h-[40rem] bg-slate-300/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[50rem] h-[50rem] bg-emerald-900/5 rounded-full blur-[150px]" />
-      </div>
-      
       <canvas 
         ref={canvasRef} 
-        className="absolute inset-0 w-full h-full blur-[1px]"
+        className="absolute inset-0 w-full h-full"
       />
+      
+      <div className="absolute inset-0">
+        {/* Extremely subtle radial gradients for depth */}
+        <div 
+          className="absolute top-1/4 left-1/4 w-[40rem] h-[40rem] -translate-x-1/2 -translate-y-1/2 pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(203,213,225,0.2) 0%, rgba(203,213,225,0) 70%)' }}
+        />
+        <div 
+          className="absolute bottom-1/4 right-1/4 w-[50rem] h-[50rem] translate-x-1/2 translate-y-1/2 pointer-events-none" 
+          style={{ background: 'radial-gradient(circle, rgba(6,78,59,0.05) 0%, rgba(6,78,59,0) 70%)' }}
+        />
+      </div>
     </div>
   );
 };

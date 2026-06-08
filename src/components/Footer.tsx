@@ -1,7 +1,17 @@
-import { BookOpen, ExternalLink, GraduationCap, Mail, MapPin, Microscope, Network } from 'lucide-react';
+import { BookOpen, ExternalLink, GraduationCap, Mail, MapPin, Microscope, Network, Globe, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db } from '../lib/supabase';
+
+
+const ICON_MAP: Record<string, any> = {
+  GraduationCap, BookOpen, Microscope, Network, Globe, Link: LinkIcon, Mail
+};
+
+const getIcon = (name: string) => {
+  const IconComponent = ICON_MAP[name] || LinkIcon;
+  return <IconComponent size={18} strokeWidth={1.8} />;
+};
 
 const QUICK_LINKS = [
   { label: 'Home', href: '/' },
@@ -35,19 +45,21 @@ const SOCIAL_LINKS = [
 
 export const Footer = () => {
   const [name, setName] = useState("Dr Aman Sharma, MRSC");
-  const [footerNameStyle, setFooterNameStyle] = useState("clean");
+  const [socialLinks, setSocialLinks] = useState(SOCIAL_LINKS);
 
   useEffect(() => {
     const fetchName = async () => {
       try {
-        const { data, error } = await db
+        const { data } = await db
           .from('general_settings')
-          .select('name,footerNameStyle')
+          .select('name,footerNameStyle,socialLinks')
           .eq('id', 'settings')
           .single();
-        if (!error && data && data.name) {
+        if (data && data.name) {
           setName(data.name);
-          setFooterNameStyle(data.footerNameStyle || "clean");
+          if (data.socialLinks && data.socialLinks.length > 0) {
+            setSocialLinks(data.socialLinks);
+          }
         }
       } catch (err) {
         console.error("Error fetching name for footer:", err);
@@ -64,7 +76,7 @@ export const Footer = () => {
           const data = payload.new as any;
           if (data && data.name) {
             setName(data.name);
-            setFooterNameStyle(data.footerNameStyle || "clean");
+            if (data.socialLinks) setSocialLinks(data.socialLinks);
           }
         }
       )
@@ -81,14 +93,17 @@ export const Footer = () => {
     .replace(/\s+,/g, ',')
     .replace(/\s{2,}/g, ' ')
     .trim();
-  const copyrightName = displayName.replace(/\s*,?\s*MRSC\b/gi, '').trim();
+  const copyrightName = displayName
+    .replace(/\s*,?\s*MRSC\b/gi, '')
+    .replace(/^Dr\.?\s+/i, '')
+    .trim();
 
   return (
-    <footer className="relative z-10 border-t border-academic-border bg-academic-accent text-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-8 lg:grid-cols-[1.35fr_0.75fr_1fr] lg:px-8">
+    <footer className="relative z-10 border-t border-academic-border bg-academic-accent text-white font-sans">
+      <div className="mx-auto grid max-w-6xl gap-6 px-6 py-4 lg:grid-cols-[1.35fr_0.75fr_1fr] lg:gap-8 lg:px-8 lg:py-6">
         <div>
-          <div className={`mb-4 text-3xl leading-none ${`name-display-${footerNameStyle}`}`}>{displayName}</div>
-          <div className="mt-4 flex flex-col gap-3 text-sm font-bold uppercase tracking-wider text-white/80 sm:flex-row sm:flex-wrap">
+          <div className="mb-3 text-2xl font-serif font-bold leading-none">{displayName}</div>
+          <div className="mt-3 flex flex-col gap-2 text-sm text-white/80 sm:flex-row sm:flex-wrap">
             <a
               href="mailto:AmanSharmaphd@gmail.com"
               className="inline-flex items-center gap-2 transition-colors hover:text-white"
@@ -105,7 +120,7 @@ export const Footer = () => {
 
         <div>
           <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-white/60">Explore</h2>
-          <nav className="grid gap-3" aria-label="Footer navigation">
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 lg:grid lg:gap-3" aria-label="Footer navigation">
             {QUICK_LINKS.map((link) => (
               <Link
                 key={link.href}
@@ -120,20 +135,20 @@ export const Footer = () => {
 
         <div>
           <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-white/60">Academic Profiles</h2>
-          <div className="grid gap-3">
-            {SOCIAL_LINKS.map((link) => (
+          <div className="grid grid-cols-2 gap-2 lg:gap-3">
+            {socialLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-between gap-4 border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold uppercase tracking-wider text-white/85 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
+                className="group inline-flex items-center justify-between gap-2 border border-white/15 bg-white/5 px-2 py-2 lg:px-3 lg:py-2.5 text-xs font-bold uppercase tracking-wider text-white/85 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
               >
-                <span className="inline-flex items-center gap-3">
-                  {link.icon}
-                  {link.label}
+                <span className="inline-flex items-center gap-2 truncate">
+                  {typeof link.icon === "string" ? getIcon(link.icon) : link.icon}
+                  <span className="truncate">{link.label}</span>
                 </span>
-                <ExternalLink size={14} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                <ExternalLink size={12} className="hidden lg:block shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </a>
             ))}
           </div>
@@ -141,7 +156,7 @@ export const Footer = () => {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl justify-center px-6 py-6 text-center text-sm font-semibold text-white/60 lg:px-8">
+        <div className="mx-auto flex max-w-6xl justify-center px-6 py-4 text-center text-sm font-semibold text-white/60 lg:px-8">
           <p>&copy; {new Date().getFullYear()} {copyrightName}. All rights reserved.</p>
         </div>
       </div>

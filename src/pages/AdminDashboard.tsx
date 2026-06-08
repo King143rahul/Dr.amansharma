@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { auth, db, storage } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
 
 const getPhotosStoragePath = (url: string) => {
   try {
@@ -24,6 +24,7 @@ const DESIGN_STYLE_OPTIONS = [
   { value: 'classic', label: 'Classic Academic' },
   { value: 'clean', label: 'Clean Modern' },
   { value: 'editorial', label: 'Editorial Italic' },
+  { value: 'noto', label: 'Noto Serif' },
 ];
 
 const normalizePublicationTitle = (title: string) => {
@@ -286,6 +287,8 @@ const navItems = [
   { name: "Publications", path: "publications" },
   { name: "Media Gallery", path: "media" },
   { name: "Form Submissions", path: "submissions" },
+  { name: "Notification Emails", path: "emails" },
+  { name: "Social Links", path: "social" },
   { name: "Change Password", path: "password" },
 ];
 
@@ -366,6 +369,11 @@ const GeneralSettingsEditor = () => {
   const [contactLinkedIn, setContactLinkedIn] = useState("");
   const [contactOrcid, setContactOrcid] = useState("");
   const [contactWhatsApp, setContactWhatsApp] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
+  const [seoKeywords, setSeoKeywords] = useState("");
+  const [cvUrl, setCvUrl] = useState("");
+  const [cvUploading, setCvUploading] = useState(false);
 
   const [profilePicUrl, setProfilePicUrl] = useState("");
   const [profileUploading, setProfileUploading] = useState(false);
@@ -397,6 +405,10 @@ const GeneralSettingsEditor = () => {
         setContactLinkedIn(data.contactLinkedIn ?? "https://www.linkedin.com/in/amansharmaphd/");
         setContactOrcid(data.contactOrcid ?? "https://orcid.org/0000-0000-0000-0000");
         setContactWhatsApp(data.contactWhatsApp ?? "");
+        setSeoTitle(data.seoTitle ?? "");
+        setSeoDescription(data.seoDescription ?? "");
+        setSeoKeywords(data.seoKeywords ?? "");
+        setCvUrl(data.cvUrl ?? "");
         setProfilePicUrl(data.profilePicUrl ?? "");
       }
       setLoading(false);
@@ -426,6 +438,10 @@ const GeneralSettingsEditor = () => {
       contactLinkedIn,
       contactOrcid,
       contactWhatsApp,
+      seoTitle,
+      seoDescription,
+      seoKeywords,
+      cvUrl,
       profilePicUrl
     });
     if (error) {
@@ -490,6 +506,36 @@ const GeneralSettingsEditor = () => {
     }
   };
 
+  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert("Upload failed: File size exceeds 10MB limit."); return; }
+    if (file.type !== 'application/pdf') { alert("Upload failed: Only PDF files are allowed."); return; }
+    
+    setCvUploading(true);
+    try {
+      const filePath = `documents/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await storage.upload(filePath, file, { contentType: 'application/pdf', upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data } = storage.getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+      setCvUrl(publicUrl);
+
+      const { error: dbErr } = await db.from('general_settings').update({ cvUrl: publicUrl }).eq('id', 'settings');
+      if (dbErr) alert(`CV uploaded but save failed: ${dbErr.message}`);
+      else alert("CV uploaded and saved successfully!");
+    } catch (err: any) { alert(`Upload failed: ${err.message}`); }
+    finally { setCvUploading(false); }
+  };
+
+  const handleRemoveCv = async () => {
+    setCvUrl("");
+    const { error: dbErr } = await db.from('general_settings').update({ cvUrl: "" }).eq('id', 'settings');
+    if (dbErr) alert(`Remove CV failed: ${dbErr.message}`);
+    else alert("CV removed successfully!");
+  };
+
   const handleRemoveProfilePic = async () => {
     setProfilePicUrl("");
     try {
@@ -514,7 +560,44 @@ const GeneralSettingsEditor = () => {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
-      <div className="rounded-lg border border-academic-border bg-white p-5 shadow-sm sm:p-8">
+          <div className="mt-8 rounded-lg border border-academic-border bg-white p-5 shadow-sm sm:p-8">
+          <div className="mb-6 border-b border-academic-border pb-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-academic-brand">Documents</p>
+            <h3 className="editorial-heading text-xl sm:text-2xl">CV / Resume</h3>
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            {cvUrl ? (
+              <div className="flex items-center gap-4">
+                <a href={cvUrl} target="_blank" rel="noopener noreferrer" className="text-academic-brand font-bold underline">View Current CV</a>
+                <button type="button" onClick={handleRemoveCv} className="text-red-500 font-semibold hover:text-red-700">Remove</button>
+              </div>
+            ) : (
+              <p className="text-academic-muted">No CV uploaded.</p>
+            )}
+            <label className="cursor-pointer flex items-center justify-center bg-academic-brand text-white px-5 py-2 rounded-lg hover:bg-emerald-800 transition">
+              {cvUploading ? "Uploading..." : <><FileUp size={16} className="mr-2" /> Upload PDF</>}
+              <input type="file" accept="application/pdf" onChange={handleCvUpload} className="hidden" disabled={cvUploading} />
+            </label>
+          </div>
+        </div>
+      <div className="mt-8 rounded-lg border border-academic-border bg-white p-5 shadow-sm sm:p-8">
+          <div className="mb-6 border-b border-academic-border pb-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-academic-brand">Search Engine Optimization</p>
+            <h3 className="editorial-heading text-xl sm:text-2xl">SEO Settings</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <RichTextField label="Site Title" value={seoTitle} onChange={setSeoTitle} placeholder="Dr. Aman Sharma | Materials Chemist" />
+            </div>
+            <div>
+              <RichTextField label="Meta Description" value={seoDescription} onChange={setSeoDescription} multiline rows={3} placeholder="Brief description of your expertise for search engines..." />
+            </div>
+            <div>
+              <RichTextField label="Meta Keywords" value={seoKeywords} onChange={setSeoKeywords} placeholder="chemistry, nanotechnology, researcher, professor..." />
+            </div>
+          </div>
+        </div>
+      <div className="mt-8 rounded-lg border border-academic-border bg-white p-5 shadow-sm sm:p-8">
         <div className="mb-6 flex flex-col gap-3 border-b border-academic-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-academic-brand">Appearance & Content</p>
@@ -1668,6 +1751,7 @@ const MediaGallery = () => {
     const { data, error } = await db
       .from('media_gallery')
       .select('*')
+      .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
     if (!error && data) {
       setImages(data);
@@ -1724,7 +1808,7 @@ const MediaGallery = () => {
       }
 
       const { data } = storage.getPublicUrl(filePath);
-      const { error: dbError } = await db.from('media_gallery').insert({ url: data.publicUrl });
+      const { error: dbError } = await db.from('media_gallery').insert({ url: data.publicUrl, display_order: -Date.now() });
       if (dbError) {
         throw dbError;
       }
@@ -1799,6 +1883,23 @@ const MediaGallery = () => {
       await fetchImages();
     }
   };
+    const reorderImage = async (currentIndex: number, newPosition: number) => {
+    const targetIndex = Math.max(0, Math.min(images.length - 1, newPosition - 1));
+    if (currentIndex === targetIndex) return;
+
+    const newOrder = [...images];
+    const [movedItem] = newOrder.splice(currentIndex, 1);
+    newOrder.splice(targetIndex, 0, movedItem);
+
+    // Update display_order sequentially
+    const updates = newOrder.map((img, i) => ({ ...img, display_order: i + 1 }));
+    setImages(updates);
+
+    // Persist to DB
+    for (const u of updates) {
+      await db.from('media_gallery').update({ display_order: u.display_order }).eq('id', u.id);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto relative">
@@ -1821,20 +1922,41 @@ const MediaGallery = () => {
           </label>
         </div>
         <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-          {images.map((img) => (
+          {images.map((img, index) => (
             <div key={img.id} className="flex flex-col bg-white border border-academic-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className="relative aspect-square bg-academic-surface flex items-center justify-center group">
                 <img src={img.url} alt="gallery" className="object-cover w-full h-full" />
-                <button
-                  onClick={() => requestDeleteImage(img.id, img.url)}
-                  disabled={deletingImageIds.has(img.id)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Delete image"
-                >
-                  <div className="bg-red-500 text-white p-2.5 rounded-full hover:scale-110 transition-transform">
+                
+                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 p-1.5 rounded-lg backdrop-blur-sm z-10" onClick={e => e.stopPropagation()}>
+                  <label className="text-[10px] font-bold text-white/90 uppercase ml-1">Order</label>
+                  <select
+                    value={index + 1}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val !== index + 1) {
+                        reorderImage(index, val);
+                      }
+                    }}
+                    className="bg-white text-academic-text font-bold text-xs px-1.5 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-academic-brand cursor-pointer"
+                  >
+                    {images.map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => requestDeleteImage(img.id, img.url)}
+                    disabled={deletingImageIds.has(img.id)}
+                    className="bg-red-500 text-white p-2.5 rounded-full hover:scale-110 transition-transform shadow-lg"
+                    aria-label="Delete image"
+                  >
                     <Trash2 size={20} />
-                  </div>
-                </button>
+                  </button>
+                </div>
               </div>
               <div className="p-3 border-t border-academic-border bg-academic-surface/30 space-y-2">
                 <input
@@ -1884,6 +2006,166 @@ const MediaGallery = () => {
           onConfirm={confirmAction.onConfirm}
         />
       )}
+    </div>
+  );
+};
+
+const SocialLinksEditor = () => {
+  const [links, setLinks] = useState<{label: string, href: string, icon: string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchLinks = async () => {
+      const { data, error } = await db.from('general_settings').select('socialLinks').eq('id', 'settings').single();
+      if (!error && data?.socialLinks) {
+        setLinks(data.socialLinks);
+      } else {
+        // default if none
+        setLinks([
+          { label: 'Google Scholar', href: '#', icon: 'GraduationCap' },
+          { label: 'LinkedIn', href: '#', icon: 'Linkedin' },
+        ]);
+      }
+      setLoading(false);
+    };
+    fetchLinks();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await db.from('general_settings').update({ socialLinks: links }).eq('id', 'settings');
+    if (error) alert(`Save failed: ${error.message}`);
+    else alert('Social links saved successfully!');
+    setSaving(false);
+  };
+
+  const addLink = () => setLinks([...links, { label: 'New Link', href: '#', icon: 'Link' }]);
+  const removeLink = (index: number) => setLinks(links.filter((_, i) => i !== index));
+  const updateLink = (index: number, field: string, val: string) => {
+    const updated = [...links];
+    (updated[index] as any)[field] = val;
+    setLinks(updated);
+  };
+  const moveLink = (index: number, dir: 'up'|'down') => {
+    if (dir === 'up' && index === 0) return;
+    if (dir === 'down' && index === links.length - 1) return;
+    const target = dir === 'up' ? index - 1 : index + 1;
+    const updated = [...links];
+    const temp = updated[index];
+    updated[index] = updated[target];
+    updated[target] = temp;
+    setLinks(updated);
+  };
+
+  if (loading) return <Loader />;
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <div className="flex justify-between items-center mb-6 border-b border-academic-border pb-4">
+          <h3 className="editorial-heading text-2xl sm:text-3xl">Social Links</h3>
+          <button onClick={save} disabled={saving} className="bg-academic-brand text-white px-5 py-2 rounded-lg font-bold hover:bg-emerald-800 disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          {links.map((link, i) => (
+            <div key={i} className="flex flex-col sm:flex-row gap-4 items-center bg-academic-surface p-4 rounded-xl border border-academic-border">
+              <div className="flex flex-col gap-2 w-full">
+                <input type="text" value={link.label} onChange={e => updateLink(i, 'label', e.target.value)} className="p-2 border rounded-md" placeholder="Label (e.g. LinkedIn)" />
+                <input type="text" value={link.href} onChange={e => updateLink(i, 'href', e.target.value)} className="p-2 border rounded-md" placeholder="URL" />
+                <input type="text" value={link.icon} onChange={e => updateLink(i, 'icon', e.target.value)} className="p-2 border rounded-md" placeholder="Lucide Icon Name (e.g. Linkedin, Twitter, Mail)" />
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => moveLink(i, 'up')} disabled={i===0} className="p-2 bg-white rounded-md border shadow-sm disabled:opacity-30"><ChevronLeft size={16} className="rotate-90" /></button>
+                <button onClick={() => moveLink(i, 'down')} disabled={i===links.length-1} className="p-2 bg-white rounded-md border shadow-sm disabled:opacity-30"><ChevronRight size={16} className="rotate-90" /></button>
+                <button onClick={() => removeLink(i)} className="p-2 bg-red-500 text-white rounded-md"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={addLink} className="mt-6 flex items-center gap-2 text-academic-brand font-bold hover:underline">
+          <Plus size={18} /> Add Link
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+
+const NotificationEmailsEditor = () => {
+  const [emails, setEmails] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchEmails = async () => {
+      const { data, error } = await db.from('general_settings').select('notificationEmails').eq('id', 'settings').single();
+      if (!error && data?.notificationEmails) {
+        setEmails(data.notificationEmails);
+      } else {
+        setEmails(['AmanSharmaphd@gmail.com']);
+      }
+      setLoading(false);
+    };
+    fetchEmails();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await db.from('general_settings').update({ notificationEmails: emails }).eq('id', 'settings');
+    if (error) alert(`Save failed: ${error.message}`);
+    else alert('Notification emails saved successfully!');
+    setSaving(false);
+  };
+
+  const addEmail = () => setEmails([...emails, '']);
+  const removeEmail = (index: number) => setEmails(emails.filter((_, i) => i !== index));
+  const updateEmail = (index: number, val: string) => {
+    const updated = [...emails];
+    updated[index] = val;
+    setEmails(updated);
+  };
+
+  if (loading) return <Loader />;
+
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="editorial-card p-5 sm:p-8 rounded-2xl">
+        <div className="flex justify-between items-center mb-6 border-b border-academic-border pb-4">
+          <h3 className="editorial-heading text-2xl sm:text-3xl">Form Notification Emails</h3>
+          <button onClick={save} disabled={saving} className="bg-academic-brand text-white px-5 py-2 rounded-lg font-bold hover:bg-emerald-800 disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+        
+        <p className="text-academic-muted text-sm mb-6 font-sans">
+          Add or remove the email addresses that should receive a notification when someone submits the contact form.
+        </p>
+
+        <div className="space-y-4">
+          {emails.map((email, i) => (
+            <div key={i} className="flex gap-4 items-center bg-academic-surface p-4 rounded-xl border border-academic-border">
+              <input 
+                type="email" 
+                value={email} 
+                onChange={e => updateEmail(i, e.target.value)} 
+                className="p-2 border rounded-md w-full" 
+                placeholder="Email Address (e.g. name@example.com)" 
+              />
+              <button onClick={() => removeEmail(i)} className="p-2 bg-red-500 text-white rounded-md shrink-0 hover:bg-red-600 transition-colors">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button onClick={addEmail} className="mt-6 flex items-center gap-2 text-academic-brand font-bold hover:underline">
+          <Plus size={18} /> Add Email Address
+        </button>
+      </div>
     </div>
   );
 };
@@ -2034,6 +2316,8 @@ export default function AdminDashboard() {
             <Route path="publications" element={<PublicationsEditor />} />
             <Route path="media" element={<MediaGallery />} />
             <Route path="submissions" element={<FormSubmissionsViewer />} />
+            <Route path="emails" element={<NotificationEmailsEditor />} />
+            <Route path="social" element={<SocialLinksEditor />} />
             <Route path="password" element={<ChangePasswordEditor />} />
             <Route path="*" element={<Navigate to="general" replace />} />
           </Routes>

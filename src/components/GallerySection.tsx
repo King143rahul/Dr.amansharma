@@ -28,6 +28,7 @@ export const GallerySection = () => {
       const { data, error } = await db
         .from('media_gallery')
         .select('*')
+        .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
       if (!error && data) {
         setImages(data);

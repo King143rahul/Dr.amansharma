@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { db } from '../lib/supabase';
 import { useLocation } from 'react-router-dom';
 
 const SITE_URL = 'https://amansharmaphd.com';
@@ -188,25 +189,49 @@ export const SEO = () => {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const seo = SEO_BY_PATH[pathname] ?? SEO_BY_PATH['/'];
+    let active = true;
+    
+    const updateTags = (seo: SeoConfig) => {
+      document.title = seo.title;
+      setCanonical(seo.canonical);
+      setMeta('meta[name="description"]', 'content', seo.description);
+      setMeta('meta[name="keywords"]', 'content', seo.keywords);
+      setMeta('meta[name="robots"]', 'content', pathname.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
+      setMeta('meta[property="og:title"]', 'content', seo.title);
+      setMeta('meta[property="og:description"]', 'content', seo.description);
+      setMeta('meta[property="og:url"]', 'content', seo.canonical);
+      setMeta('meta[property="og:image"]', 'content', IMAGE_URL);
+      setMeta('meta[name="twitter:title"]', 'content', seo.title);
+      setMeta('meta[name="twitter:description"]', 'content', seo.description);
+      setMeta('meta[name="twitter:image"]', 'content', IMAGE_URL);
 
-    document.title = seo.title;
-    setCanonical(seo.canonical);
-    setMeta('meta[name="description"]', 'content', seo.description);
-    setMeta('meta[name="keywords"]', 'content', seo.keywords);
-    setMeta('meta[name="robots"]', 'content', pathname.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
-    setMeta('meta[property="og:title"]', 'content', seo.title);
-    setMeta('meta[property="og:description"]', 'content', seo.description);
-    setMeta('meta[property="og:url"]', 'content', seo.canonical);
-    setMeta('meta[property="og:image"]', 'content', IMAGE_URL);
-    setMeta('meta[name="twitter:title"]', 'content', seo.title);
-    setMeta('meta[name="twitter:description"]', 'content', seo.description);
-    setMeta('meta[name="twitter:image"]', 'content', IMAGE_URL);
+      const schema = document.head.querySelector<HTMLScriptElement>('#route-schema');
+      if (schema) {
+        schema.textContent = JSON.stringify(buildSchema(seo, pathname));
+      }
+    };
 
-    const schema = document.head.querySelector<HTMLScriptElement>('#route-schema');
-    if (schema) {
-      schema.textContent = JSON.stringify(buildSchema(seo, pathname));
-    }
+    const fetchDynamicSEO = async () => {
+      const defaultSeo = SEO_BY_PATH[pathname] ?? SEO_BY_PATH['/'];
+      updateTags(defaultSeo); // apply defaults instantly
+      
+      const { data, error } = await db.from('general_settings').select('seoTitle, seoDescription, seoKeywords').eq('id', 'settings').single();
+      if (!error && data && active) {
+        const dynamicSeo = {
+          ...defaultSeo,
+          title: data.seoTitle?.trim() || defaultSeo.title,
+          description: data.seoDescription?.trim() || defaultSeo.description,
+          keywords: data.seoKeywords?.trim() || defaultSeo.keywords,
+        };
+        updateTags(dynamicSeo);
+      }
+    };
+
+    fetchDynamicSEO();
+
+    return () => {
+      active = false;
+    };
   }, [pathname]);
 
   return null;
