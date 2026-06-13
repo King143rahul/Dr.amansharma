@@ -1,8 +1,21 @@
 import { motion } from 'framer-motion';
-import { Mail, Link2, Send, GraduationCap, MessageCircle } from 'lucide-react';
+import { Mail, Send, GraduationCap, MessageCircle, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { db } from '../lib/supabase';
+
+const LinkedinIcon = ({ size = 24, className = "" }: { size?: number; className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    className={className}
+  >
+    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93zM6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37z" />
+  </svg>
+);
 
 export const ContactSection = () => {
   const [name, setName] = useState('');
@@ -95,8 +108,8 @@ export const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="py-10 sm:py-14 lg:py-16 bg-academic-surface relative z-10">
-      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+    <section id="contact" className="py-8 sm:py-10 lg:py-12 bg-academic-surface relative z-10">
+      <div className="max-w-5xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -124,7 +137,7 @@ export const ContactSection = () => {
               <h3 className="text-2xl font-serif font-medium text-academic-accent mb-8">Contact Information</h3>
               <div className="space-y-8">
                 {contactInfo.email && (
-                  <a href={`mailto:${contactInfo.email}`} className="flex items-start gap-5 text-academic-muted hover:text-academic-brand transition-colors duration-500 group">
+                  <a href={`mailto:${contactInfo.email}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 text-academic-muted hover:text-academic-brand transition-colors duration-500 group">
                     <div className="mt-1 flex-shrink-0 text-academic-accent group-hover:text-academic-brand transition-colors duration-500">
                       <Mail size={24} strokeWidth={1} />
                     </div>
@@ -137,7 +150,7 @@ export const ContactSection = () => {
                 {contactInfo.linkedin && (
                   <a href={contactInfo.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 text-academic-muted hover:text-academic-brand transition-colors duration-500 group">
                     <div className="mt-1 flex-shrink-0 text-academic-accent group-hover:text-academic-brand transition-colors duration-500">
-                      <Link2 size={24} strokeWidth={1} />
+                      <LinkedinIcon size={24} />
                     </div>
                     <div>
                       <p className="font-sans font-bold text-academic-accent uppercase tracking-wider text-sm mb-1">LinkedIn</p>
@@ -148,7 +161,7 @@ export const ContactSection = () => {
                 {contactInfo.orcid && (
                   <a href={contactInfo.orcid} target="_blank" rel="noopener noreferrer" className="flex items-start gap-5 text-academic-muted hover:text-academic-brand transition-colors duration-500 group">
                     <div className="mt-1 flex-shrink-0 text-academic-accent group-hover:text-academic-brand transition-colors duration-500">
-                      <GraduationCap size={24} strokeWidth={1} />
+                      <BookOpen size={24} strokeWidth={1} />
                     </div>
                     <div>
                       <p className="font-sans font-bold text-academic-accent uppercase tracking-wider text-sm mb-1">ORCID</p>

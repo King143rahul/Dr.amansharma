@@ -3,6 +3,7 @@ import { Activity, ArrowRight, Atom, Beaker, Droplets, Layers, Leaf, Microscope,
 import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
 import { sanitizeHtml } from '../lib/sanitizeHtml';
+import { useNavigate } from 'react-router-dom';
 
 const DEFAULT_ICONS: Record<string, React.ReactNode> = {
   'Materials Chemistry': <Beaker size={24} strokeWidth={1.5} />,
@@ -18,6 +19,7 @@ const DEFAULT_ICONS: Record<string, React.ReactNode> = {
 };
 
 export const ResearchInterestsSection = () => {
+  const navigate = useNavigate();
   const [interests, setInterests] = useState<{ id: string; name: string; icon: React.ReactNode }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,8 +65,8 @@ export const ResearchInterestsSection = () => {
   }, []);
 
   return (
-    <section id="research" className="py-10 sm:py-14 lg:py-16 bg-academic-surface relative z-10 border-b border-academic-border">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
+    <section id="research" className="py-8 sm:py-10 lg:py-12 bg-academic-surface relative z-10 border-b border-academic-border">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -84,10 +86,15 @@ export const ResearchInterestsSection = () => {
             Exploring the intersection of chemistry, nanotechnology, and sustainability to create impactful environmental solutions.
           </p>
           <button
-            onClick={() => document.querySelector('#publications')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => {
+              navigate('/contact');
+              setTimeout(() => {
+                document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }}
             className="mt-8 sm:mt-10 inline-flex w-full sm:w-auto items-center justify-center gap-3 px-6 sm:px-8 py-4 bg-academic-accent text-white font-sans text-sm sm:text-base font-bold tracking-wider uppercase hover:bg-academic-brand transition-colors duration-500 group"
           >
-            View Work
+            Collaborate
             <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform duration-500" />
           </button>
         </motion.div>

@@ -3,9 +3,21 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db } from '../lib/supabase';
 
+const LinkedinIcon = ({ size = 18, className = "" }: { size?: number; className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    className={className}
+  >
+    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93zM6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37z" />
+  </svg>
+);
 
 const ICON_MAP: Record<string, any> = {
-  GraduationCap, BookOpen, Microscope, Network, Globe, Link: LinkIcon, Mail
+  GraduationCap, BookOpen, Microscope, Network, Globe, Link: LinkIcon, Mail, Linkedin: LinkedinIcon
 };
 
 const getIcon = (name: string) => {
@@ -17,6 +29,7 @@ const QUICK_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Research', href: '/research' },
   { label: 'Startup', href: '/startup' },
+  { label: 'Team', href: '/team' },
   { label: 'Contact', href: '/contact' },
 ];
 
@@ -24,7 +37,7 @@ const SOCIAL_LINKS = [
   {
     label: 'LinkedIn',
     href: 'https://www.linkedin.com/in/amansharmaphd/',
-    icon: <Network size={18} strokeWidth={1.8} />,
+    icon: <LinkedinIcon size={18} />,
   },
   {
     label: 'Google Scholar',
@@ -36,16 +49,23 @@ const SOCIAL_LINKS = [
     href: 'https://orcid.org/0000-0001-5024-292X',
     icon: <BookOpen size={18} strokeWidth={1.8} />,
   },
-  {
-    label: 'S-VYASA Profile',
-    href: 'https://www.svyasa.edu.in/school-of-science-and-humanities.php',
-    icon: <Microscope size={18} strokeWidth={1.8} />,
-  },
 ];
 
 export const Footer = () => {
   const [name, setName] = useState("Dr Aman Sharma, MRSC");
   const [socialLinks, setSocialLinks] = useState(SOCIAL_LINKS);
+
+  const cleanSocialLinks = (links: any[]) => {
+    if (!links) return [];
+    return links
+      .filter((link: any) => link && link.label && !link.label.toLowerCase().includes('vyasa'))
+      .map((link: any) => {
+        if (link.label && link.label.toLowerCase().includes('linkedin')) {
+          return { ...link, icon: 'Linkedin' };
+        }
+        return link;
+      });
+  };
 
   useEffect(() => {
     const fetchName = async () => {
@@ -58,7 +78,7 @@ export const Footer = () => {
         if (data && data.name) {
           setName(data.name);
           if (data.socialLinks && data.socialLinks.length > 0) {
-            setSocialLinks(data.socialLinks);
+            setSocialLinks(cleanSocialLinks(data.socialLinks));
           }
         }
       } catch (err) {
@@ -76,7 +96,9 @@ export const Footer = () => {
           const data = payload.new as any;
           if (data && data.name) {
             setName(data.name);
-            if (data.socialLinks) setSocialLinks(data.socialLinks);
+            if (data.socialLinks) {
+              setSocialLinks(cleanSocialLinks(data.socialLinks));
+            }
           }
         }
       )
@@ -100,64 +122,46 @@ export const Footer = () => {
 
   return (
     <footer className="relative z-10 border-t border-academic-border bg-academic-accent text-white font-sans">
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 py-4 lg:grid-cols-[1.35fr_0.75fr_1fr] lg:gap-8 lg:px-8 lg:py-6">
-        <div>
-          <div className="mb-3 text-2xl font-serif font-bold leading-none">{displayName}</div>
-          <div className="mt-3 flex flex-col gap-2 text-sm text-white/80 sm:flex-row sm:flex-wrap">
+      <div className="mx-auto flex flex-col sm:flex-row items-center justify-between max-w-7xl gap-4 px-4 py-4 sm:py-5">
+        <div className="text-center sm:text-left">
+          <div className="text-lg sm:text-xl font-serif font-bold leading-none">{displayName}</div>
+          <div className="mt-1.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-xs sm:text-sm text-white/70">
             <a
-              href="mailto:AmanSharmaphd@gmail.com"
-              className="inline-flex items-center gap-2 transition-colors hover:text-white"
+              href="mailto:amansharmaphd@gmail.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-white transition-colors"
             >
-              <Mail size={16} />
-              AmanSharmaphd@gmail.com
+              <Mail size={14} />
+              amansharmaphd@gmail.com
             </a>
-            <span className="inline-flex items-center gap-2">
-              <MapPin size={16} />
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={14} />
               Bengaluru, Karnataka
             </span>
           </div>
         </div>
 
-        <div>
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-white/60">Explore</h2>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 lg:grid lg:gap-3" aria-label="Footer navigation">
-            {QUICK_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="text-base font-semibold text-white/80 transition-colors hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div>
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-white/60">Academic Profiles</h2>
-          <div className="grid grid-cols-2 gap-2 lg:gap-3">
-            {socialLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center justify-between gap-2 border border-white/15 bg-white/5 px-2 py-2 lg:px-3 lg:py-2.5 text-xs font-bold uppercase tracking-wider text-white/85 transition-colors hover:border-white/40 hover:bg-white/10 hover:text-white"
-              >
-                <span className="inline-flex items-center gap-2 truncate">
-                  {typeof link.icon === "string" ? getIcon(link.icon) : link.icon}
-                  <span className="truncate">{link.label}</span>
-                </span>
-                <ExternalLink size={12} className="hidden lg:block shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-              </a>
-            ))}
-          </div>
+        <div className="flex items-center gap-4">
+          {socialLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white hover:scale-110 transition-all p-1"
+              title={link.label}
+              aria-label={link.label}
+            >
+              {typeof link.icon === "string" ? getIcon(link.icon) : link.icon}
+            </a>
+          ))}
         </div>
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl justify-center px-6 py-4 text-center text-sm font-semibold text-white/60 lg:px-8">
-          <p>&copy; {new Date().getFullYear()} {copyrightName}. All rights reserved.</p>
+        <div className="mx-auto text-center px-4 py-2.5 text-[10px] sm:text-xs font-medium text-white/50">
+          &copy; {new Date().getFullYear()} {copyrightName}. All rights reserved.
         </div>
       </div>
     </footer>

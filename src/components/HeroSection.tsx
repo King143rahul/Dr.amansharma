@@ -6,13 +6,28 @@ import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
 import { sanitizeHtml } from '../lib/sanitizeHtml';
 
-const CHEMISTRY_POINTS = [
-  { label: 'C', className: 'left-[8%] top-[18%]' },
-  { label: 'O', className: 'left-[12%] bottom-[20%]' },
-  { label: 'H', className: 'right-[14%] top-[22%]' },
-  { label: 'Fe', className: 'right-[26%] top-[48%]' },
-  { label: 'OH', className: 'right-[10%] bottom-[24%]' },
-];
+const cleanStatValue = (val: string) => {
+  if (!val) return "";
+  return val
+    .replace(/years/gi, "")
+    .replace(/experience/gi, "")
+    .replace(/filed/gi, "")
+    .replace(/patents?/gi, "")
+    .replace(/publications?/gi, "")
+    .replace(/startup/gi, "")
+    .replace(/govt/gi, "")
+    .replace(/grants?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const getValueFontSize = (val: string) => {
+  const len = val.length;
+  if (len <= 3) return "text-xl sm:text-2xl lg:text-3xl";
+  if (len <= 6) return "text-base sm:text-lg lg:text-xl px-1";
+  if (len <= 10) return "text-sm sm:text-base lg:text-lg px-2";
+  return "text-[10px] sm:text-xs lg:text-sm px-2 text-center leading-tight";
+};
 
 export const HeroSection = () => {
   const navigate = useNavigate();
@@ -22,7 +37,11 @@ export const HeroSection = () => {
     heroRoles: "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
     heroDesc: "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
     heroNameStyle: "classic",
-    profilePicUrl: ""
+    profilePicUrl: "",
+    experienceValue: "4+",
+    patentsValue: "4+",
+    publicationsValue: "20+",
+    grantsValue: "1"
   });
 
   useEffect(() => {
@@ -40,7 +59,11 @@ export const HeroSection = () => {
           heroRoles: data.heroRoles || settings.heroRoles,
           heroDesc: data.heroDesc || settings.heroDesc,
           heroNameStyle: data.heroNameStyle || "classic",
-          profilePicUrl: data.profilePicUrl || ""
+          profilePicUrl: data.profilePicUrl || "",
+          experienceValue: data.experienceValue || "4+",
+          patentsValue: data.patentsValue || "4+",
+          publicationsValue: data.publicationsValue || "20+",
+          grantsValue: data.grantsValue || "1"
         });
       }
     };
@@ -62,7 +85,11 @@ export const HeroSection = () => {
               heroRoles: data.heroRoles || settings.heroRoles,
               heroDesc: data.heroDesc || settings.heroDesc,
               heroNameStyle: data.heroNameStyle || "classic",
-              profilePicUrl: data.profilePicUrl || ""
+              profilePicUrl: data.profilePicUrl || "",
+              experienceValue: data.experienceValue || "4+",
+              patentsValue: data.patentsValue || "4+",
+              publicationsValue: data.publicationsValue || "20+",
+              grantsValue: data.grantsValue || "1"
             });
           }
         }
@@ -102,28 +129,31 @@ export const HeroSection = () => {
   const lastName = nameParts.pop();
   const restName = nameParts.join(' ');
 
+  const renderStatsCircles = () => (
+    <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full max-w-[16rem] sm:max-w-xs mt-2 relative z-10">
+      {[
+        { value: settings.experienceValue, label: "Years\nExperience" },
+        { value: settings.patentsValue, label: "Filed\nPatents" },
+        { value: settings.publicationsValue, label: "Publications" },
+        { value: settings.grantsValue, label: "Startup\nGovt Grant" }
+      ].map((stat, i) => {
+        const cleanedValue = cleanStatValue(stat.value);
+        return (
+          <div key={i} className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 mx-auto rounded-full border border-academic-brand/20 bg-white/60 backdrop-blur-md shadow-lg hover:shadow-xl hover:border-academic-brand/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+            <span className={`${getValueFontSize(cleanedValue)} font-bold text-academic-accent mb-0.5 sm:mb-1`}>{cleanedValue}</span>
+            <span className="text-[9px] sm:text-[10px] lg:text-xs text-center leading-tight px-2 text-academic-muted whitespace-pre-line font-semibold uppercase tracking-wider">{stat.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-20 pb-10 sm:pt-24 sm:pb-16 lg:pt-24 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
+    <section className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center justify-center pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-32 lg:pb-16 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
       <div className="chemistry-grid absolute inset-0 z-0 opacity-70" />
       <div className="absolute inset-x-0 top-0 z-0 h-16 border-b border-academic-border bg-white/80 sm:h-20 lg:h-24" />
-      <div className="pointer-events-none absolute inset-0 z-0 hidden sm:block">
-        <div className="absolute left-[7%] top-[20%] h-48 w-48 rotate-12 border border-academic-brand/20" />
-        <div className="absolute bottom-[14%] right-[9%] h-56 w-56 -rotate-12 border border-academic-accent/15" />
-        <div className="absolute left-[13%] top-[28%] h-px w-40 rotate-[31deg] bg-academic-brand/25" />
-        <div className="absolute left-[16%] bottom-[28%] h-px w-52 -rotate-[28deg] bg-academic-brand/25" />
-        <div className="absolute right-[13%] top-[33%] h-px w-48 -rotate-[33deg] bg-academic-brand/25" />
-        <div className="absolute right-[15%] bottom-[31%] h-px w-44 rotate-[27deg] bg-academic-brand/25" />
-        {CHEMISTRY_POINTS.map((point) => (
-          <div
-            key={point.label}
-            className={`absolute flex h-12 w-12 items-center justify-center rounded-full border border-academic-brand/40 bg-white text-sm font-bold text-academic-brand shadow-sm ${point.className}`}
-          >
-            {point.label}
-          </div>
-        ))}
-      </div>
       
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10 grid w-full items-center gap-8 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4 relative z-10 grid w-full items-center gap-8 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="order-2 flex flex-col items-center text-center lg:order-1 lg:items-start lg:text-left">
         
         <motion.div
@@ -133,7 +163,7 @@ export const HeroSection = () => {
           className="editorial-subheading mb-4 flex items-center justify-center gap-3 sm:mb-7 lg:justify-start"
         >
           <span className="w-8 h-px bg-academic-brand"></span>
-          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle) }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle.replace(/Academician & Researcher/i, 'Researcher & Academician')) }} />
           <span className="w-8 h-px bg-academic-brand"></span>
         </motion.div>
 
@@ -182,31 +212,40 @@ export const HeroSection = () => {
             Explore Research
             <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform duration-500" />
           </button>
-          <button onClick={() => goToSection('#publications', '/research')} className="w-full sm:w-auto px-6 sm:px-8 py-4 border border-academic-border text-academic-accent font-sans text-sm sm:text-base font-bold tracking-wider uppercase hover:border-academic-accent transition-colors duration-500 flex items-center justify-center gap-3">
-            <FileText size={16} />
-            View Work
-          </button>
+
           <button onClick={() => goToSection('#contact', '/contact')} className="w-full sm:w-auto px-6 sm:px-8 py-4 border border-transparent text-academic-muted font-sans text-sm sm:text-base font-bold tracking-wider uppercase hover:text-academic-brand transition-colors duration-500 flex items-center justify-center gap-3 max-sm:border-academic-border max-sm:bg-white/70">
             <Users size={16} />
             Collaborate
           </button>
         </motion.div>
+
+        {/* Stats circles on Mobile */}
+        <div className="lg:hidden mt-10 flex justify-center w-full">
+          {renderStatsCircles()}
+        </div>
         </div>
 
         <motion.div
-          className="order-1 relative flex w-full items-center justify-center lg:order-2"
+          className="order-1 flex w-full flex-col items-center justify-center lg:order-2"
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
         >
-          <div className="absolute h-56 w-56 rounded-full border border-academic-brand/25 min-[420px]:h-64 min-[420px]:w-64 sm:h-[22rem] sm:w-[22rem] md:h-[30rem] md:w-[30rem]" />
-          <div className="absolute h-48 w-48 rounded-full border border-academic-accent/10 min-[420px]:h-56 min-[420px]:w-56 sm:h-[18rem] sm:w-[18rem] md:h-[25rem] md:w-[25rem]" />
-          <div className="relative h-48 w-48 overflow-hidden rounded-full border-4 border-white bg-white shadow-2xl ring-1 ring-academic-border min-[420px]:h-56 min-[420px]:w-56 sm:h-72 sm:w-72 md:h-[26rem] md:w-[26rem]">
-            <img
-              src={settings.profilePicUrl || amanSharmaPhoto}
-              alt="Dr. Aman Sharma"
-              className="h-full w-full object-cover object-[50%_18%]"
-            />
+          <div className="relative flex w-full items-center justify-center mb-4 lg:mb-12 mt-4 lg:mt-0">
+            <div className="absolute h-56 w-56 rounded-full border border-academic-brand/25 min-[420px]:h-64 min-[420px]:w-64 sm:h-[20rem] sm:w-[20rem] md:h-96 md:w-96" />
+            <div className="absolute h-48 w-48 rounded-full border border-academic-accent/10 min-[420px]:h-56 min-[420px]:w-56 sm:h-[16rem] sm:w-[16rem] md:h-72 md:w-72" />
+            <div className="relative h-48 w-48 overflow-hidden rounded-full border-4 border-white bg-white shadow-2xl ring-1 ring-academic-border min-[420px]:h-56 min-[420px]:w-56 sm:h-64 sm:w-64 md:h-64 md:w-64 lg:h-80 lg:w-80">
+              <img
+                src={settings.profilePicUrl || amanSharmaPhoto}
+                alt="Dr. Aman Sharma"
+                className="h-full w-full object-cover object-[50%_18%]"
+              />
+            </div>
+          </div>
+
+          {/* Stats circles on Desktop */}
+          <div className="hidden lg:flex justify-center w-full mt-2">
+            {renderStatsCircles()}
           </div>
         </motion.div>
       </div>

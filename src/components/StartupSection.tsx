@@ -55,8 +55,8 @@ export const StartupSection = () => {
   const plainTitle = title.replace(/<[^>]*>/g, "");
 
   return (
-    <section id="startup" className="py-10 sm:py-14 lg:py-16 bg-academic-bg relative z-10 border-b border-academic-border">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
+    <section id="startup" className="py-8 sm:py-10 lg:py-12 bg-academic-bg relative z-10 border-b border-academic-border">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <div className="border border-academic-border bg-white relative">
           <div className="p-5 sm:p-10 md:p-16 lg:p-20 flex flex-col lg:flex-row gap-10 sm:gap-14 lg:gap-16 items-center">
             <motion.div 

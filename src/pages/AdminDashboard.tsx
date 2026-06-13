@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { auth, db, storage } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff, ChevronLeft, ChevronRight, GraduationCap, Pencil } from "lucide-react";
 
 const getPhotosStoragePath = (url: string) => {
   try {
@@ -286,6 +286,7 @@ const navItems = [
   { name: "Startup", path: "startup" },
   { name: "Publications", path: "publications" },
   { name: "Media Gallery", path: "media" },
+  { name: "Manage Team", path: "team" },
   { name: "Form Submissions", path: "submissions" },
   { name: "Notification Emails", path: "emails" },
   { name: "Social Links", path: "social" },
@@ -362,7 +363,6 @@ const GeneralSettingsEditor = () => {
   const [patentsValue, setPatentsValue] = useState("");
   const [publicationsValue, setPublicationsValue] = useState("");
   const [grantsValue, setGrantsValue] = useState("");
-  const [conferencesValue, setConferencesValue] = useState("");
 
   // Contact
   const [contactEmail, setContactEmail] = useState("");
@@ -396,11 +396,10 @@ const GeneralSettingsEditor = () => {
         setHeroNameStyle(data.heroNameStyle ?? "classic");
         setFooterNameStyle(data.footerNameStyle ?? "clean");
         setAboutSubheading(data.aboutSubheading ?? "Pioneering the intersection of nanotechnology and green chemistry.");
-        setExperienceValue(data.experienceValue ?? "7+");
-        setPatentsValue(data.patentsValue ?? "Multiple");
-        setPublicationsValue(data.publicationsValue ?? "15+");
-        setGrantsValue(data.grantsValue ?? "2");
-        setConferencesValue(data.conferencesValue ?? "10+");
+        setExperienceValue(data.experienceValue ?? "4+");
+        setPatentsValue(data.patentsValue ?? "4+");
+        setPublicationsValue(data.publicationsValue ?? "20+");
+        setGrantsValue(data.grantsValue ?? "1");
         setContactEmail(data.contactEmail ?? "AmanSharmaphd@gmail.com");
         setContactLinkedIn(data.contactLinkedIn ?? "https://www.linkedin.com/in/amansharmaphd/");
         setContactOrcid(data.contactOrcid ?? "https://orcid.org/0000-0000-0000-0000");
@@ -433,7 +432,6 @@ const GeneralSettingsEditor = () => {
       patentsValue,
       publicationsValue,
       grantsValue,
-      conferencesValue,
       contactEmail,
       contactLinkedIn,
       contactOrcid,
@@ -711,15 +709,15 @@ const GeneralSettingsEditor = () => {
       </div>
 
       <div className="editorial-card p-5 sm:p-8 rounded-2xl">
-        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Statistics</h3>
-        <p className="text-academic-muted text-sm mb-4">Edit key metric values shown in the stats grid on the About section.</p>
+        <h3 className="editorial-heading text-2xl sm:text-3xl mb-6">Home Page Stats</h3>
+        <p className="text-academic-muted text-sm mb-4">Edit the key metric values shown in the stats circles on the Home page.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-academic-muted mb-2">Years Experience</label>
             <RichTextField value={experienceValue} onChange={setExperienceValue} />
           </div>
           <div>
-            <label className="block text-sm font-bold text-academic-muted mb-2">Patents</label>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Filed Patents</label>
             <RichTextField value={patentsValue} onChange={setPatentsValue} />
           </div>
           <div>
@@ -727,12 +725,8 @@ const GeneralSettingsEditor = () => {
             <RichTextField value={publicationsValue} onChange={setPublicationsValue} />
           </div>
           <div>
-            <label className="block text-sm font-bold text-academic-muted mb-2">Govt Grants</label>
+            <label className="block text-sm font-bold text-academic-muted mb-2">Startup Govt Grant</label>
             <RichTextField value={grantsValue} onChange={setGrantsValue} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-academic-muted mb-2">Conferences</label>
-            <RichTextField value={conferencesValue} onChange={setConferencesValue} />
           </div>
         </div>
       </div>
@@ -2283,6 +2277,360 @@ const ChangePasswordEditor = () => {
   );
 };
 
+// ----------------------- Team/Students Editor ----------------------- //
+
+const TeamEditor = () => {
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Form states for adding/editing
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [achievements, setAchievements] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const fetchTeam = async () => {
+    setLoading(true);
+    const { data, error } = await db
+      .from('media_gallery')
+      .select('*')
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const studentList = data
+        .filter((item: any) => {
+          try {
+            const parsed = JSON.parse(item.caption);
+            return parsed && parsed.type === 'student';
+          } catch {
+            return false;
+          }
+        })
+        .map((item: any) => {
+          const parsed = JSON.parse(item.caption);
+          return {
+            id: item.id,
+            url: item.url,
+            name: parsed.name || "",
+            role: parsed.role || "",
+            achievements: parsed.achievements || "",
+            display_order: item.display_order || 0
+          };
+        });
+      setStudents(studentList);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTeam();
+  }, []);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setRole("");
+    setAchievements("");
+    setPhotoUrl("");
+    setSelectedFile(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size exceeds 10MB limit.");
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      alert("Only image files are allowed.");
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPhotoUrl(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      alert("Student name is required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let finalPhotoUrl = photoUrl;
+
+      // Upload image if selected
+      if (selectedFile) {
+        setUploading(true);
+        const webpFile = await convertToWebP(selectedFile);
+        const filePath = `team/${Date.now()}_${webpFile.name}`;
+        const { error: uploadError } = await storage.upload(filePath, webpFile, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+        if (uploadError) throw uploadError;
+
+        const { data } = storage.getPublicUrl(filePath);
+        finalPhotoUrl = data.publicUrl;
+        setUploading(false);
+      }
+
+      const captionObj = {
+        type: 'student',
+        name: name.trim(),
+        role: role.trim(),
+        achievements: achievements.trim()
+      };
+
+      const captionStr = JSON.stringify(captionObj);
+
+      if (editingId) {
+        // Update
+        const { error } = await db
+          .from('media_gallery')
+          .update({
+            url: finalPhotoUrl,
+            caption: captionStr
+          })
+          .eq('id', editingId);
+        if (error) throw error;
+        alert("Student updated successfully!");
+      } else {
+        // Insert
+        const { error } = await db
+          .from('media_gallery')
+          .insert({
+            url: finalPhotoUrl,
+            caption: captionStr,
+            display_order: -Date.now()
+          });
+        if (error) throw error;
+        alert("Student added successfully!");
+      }
+
+      resetForm();
+      await fetchTeam();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Save failed: ${err.message}`);
+    } finally {
+      setSaving(false);
+      setUploading(false);
+    }
+  };
+
+  const handleEdit = (student: any) => {
+    setEditingId(student.id);
+    setName(student.name);
+    setRole(student.role);
+    setAchievements(student.achievements);
+    setPhotoUrl(student.url);
+    setSelectedFile(null);
+  };
+
+  const handleDelete = async (docId: string, url: string) => {
+    const { data, error } = await db
+      .from('media_gallery')
+      .delete()
+      .eq('id', docId)
+      .select('id');
+
+    if (error || getDeletedCount(data) === 0) {
+      console.error(error);
+      alert(error ? `Delete failed: ${error.message}` : "Delete failed.");
+    } else {
+      const filePath = getPhotosStoragePath(url);
+      if (filePath) {
+        await storage.remove([filePath]).catch(console.error);
+      }
+      alert("Student deleted successfully!");
+      await fetchTeam();
+      if (editingId === docId) {
+        resetForm();
+      }
+    }
+  };
+
+  const requestDelete = (docId: string, url: string) => {
+    setConfirmAction({
+      title: "Delete Student?",
+      message: "Do you want to remove this student from your group list?",
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        setConfirmAction(null);
+        void handleDelete(docId, url);
+      }
+    });
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <h2 className="editorial-heading text-3xl sm:text-4xl mb-6 font-serif">Manage Students & Team</h2>
+      
+      {/* Edit Form */}
+      <form onSubmit={handleSave} className="editorial-card p-6 sm:p-8 rounded-2xl mb-8 space-y-6">
+        <h3 className="editorial-heading text-xl sm:text-2xl">
+          {editingId ? "Edit Student Profile" : "Add New Student"}
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-academic-muted mb-2">Student Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="e.g. John Doe"
+                className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-academic-muted mb-2">Role / Designation</label>
+              <input
+                type="text"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                placeholder="e.g. PhD Scholar, Postdoc, Master's Student"
+                className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-academic-muted mb-2">Achievements / Project Info</label>
+              <textarea
+                value={achievements}
+                onChange={(e) => setAchievements(e.target.value)}
+                placeholder="e.g. Won Best Poster Award at RSC 2026. Researching functional polymer nanomaterials."
+                rows={3}
+                className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center border border-dashed border-academic-border rounded-xl p-4 bg-academic-surface/30">
+            {photoUrl ? (
+              <div className="relative w-40 h-40 rounded-full overflow-hidden border-2 border-academic-brand mb-4">
+                <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-40 h-40 rounded-full bg-academic-border/30 flex items-center justify-center text-academic-muted mb-4">
+                <GraduationCap size={48} />
+              </div>
+            )}
+            
+            <label className="cursor-pointer bg-white border border-academic-border hover:border-academic-brand text-academic-brand hover:text-white hover:bg-academic-brand font-bold py-2 px-4 rounded-lg transition text-sm flex items-center gap-2">
+              <Upload size={16} />
+              {photoUrl ? "Change Photo" : "Upload Photo"}
+              <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            </label>
+            <p className="text-[10px] text-academic-muted mt-2">Max size: 10MB. Formats: PNG, JPG, WEBP.</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 justify-end pt-4 border-t border-academic-border/60">
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-lg border border-academic-border px-4 py-2.5 font-bold text-academic-accent hover:bg-academic-surface"
+            >
+              Cancel Edit
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={saving || uploading}
+            className="bg-academic-brand text-white font-bold py-2.5 px-6 rounded-lg hover:bg-academic-brand/90 transition flex items-center gap-2 disabled:opacity-75"
+          >
+            {saving || uploading ? <Loader /> : <><Plus size={18} /> {editingId ? "Update Student" : "Add Student"}</>}
+          </button>
+        </div>
+      </form>
+
+      {/* List of current students */}
+      <div className="editorial-card p-6 sm:p-8 rounded-2xl">
+        <h3 className="editorial-heading text-xl sm:text-2xl mb-6 font-serif">Current Students List</h3>
+        
+        {loading ? (
+          <Loader />
+        ) : students.length === 0 ? (
+          <p className="text-academic-muted text-sm font-medium text-center py-6">No students added yet.</p>
+        ) : (
+          <div className="divide-y divide-academic-border/60">
+            {students.map((student) => (
+              <div key={student.id} className="py-4 flex items-center justify-between gap-4 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-academic-surface/60 border border-academic-border shrink-0">
+                    {student.url ? (
+                      <img src={student.url} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <GraduationCap className="w-full h-full p-2 text-academic-muted/50" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-serif font-bold text-academic-accent text-lg leading-tight">{student.name}</h4>
+                    <p className="text-xs text-academic-brand font-semibold font-sans tracking-wide uppercase mt-0.5">{student.role}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(student)}
+                    className="p-2 text-academic-brand hover:bg-academic-surface rounded-lg transition"
+                    title="Edit profile"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    onClick={() => requestDelete(student.id, student.url)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                    title="Delete profile"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          onCancel={() => setConfirmAction(null)}
+          onConfirm={confirmAction.onConfirm}
+        />
+      )}
+    </div>
+  );
+};
+
 // ----------------------- Main Admin Dashboard ----------------------- //
 
 export default function AdminDashboard() {
@@ -2315,6 +2663,7 @@ export default function AdminDashboard() {
             <Route path="startup" element={<StartupEditor />} />
             <Route path="publications" element={<PublicationsEditor />} />
             <Route path="media" element={<MediaGallery />} />
+            <Route path="team" element={<TeamEditor />} />
             <Route path="submissions" element={<FormSubmissionsViewer />} />
             <Route path="emails" element={<NotificationEmailsEditor />} />
             <Route path="social" element={<SocialLinksEditor />} />

@@ -31,7 +31,15 @@ export const GallerySection = () => {
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false });
       if (!error && data) {
-        setImages(data);
+        const galleryPhotos = data.filter((item: any) => {
+          try {
+            const parsed = JSON.parse(item.caption);
+            return parsed && parsed.type !== 'student';
+          } catch {
+            return true;
+          }
+        });
+        setImages(galleryPhotos);
       }
     } catch (err) {
       console.error("Error fetching gallery images:", err);
@@ -87,8 +95,8 @@ export const GallerySection = () => {
   };
 
   return (
-    <section className="py-10 sm:py-14 lg:py-16 bg-academic-surface relative z-10 border-b border-academic-border">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
+    <section className="py-8 sm:py-10 lg:py-12 bg-academic-surface relative z-10 border-b border-academic-border">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

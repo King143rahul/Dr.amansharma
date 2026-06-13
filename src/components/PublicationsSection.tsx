@@ -91,8 +91,8 @@ export const PublicationsSection = () => {
   }, []);
 
   return (
-    <section id="publications" className="py-10 sm:py-14 lg:py-16 relative z-10 bg-academic-bg border-b border-academic-border">
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
+    <section id="publications" className="py-8 sm:py-10 lg:py-12 relative z-10 bg-academic-bg border-b border-academic-border">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <div className="flex flex-col lg:flex-row gap-10 sm:gap-14 lg:gap-24 items-start">
           <motion.div 
             className="lg:w-1/3 lg:sticky lg:top-32"
@@ -130,9 +130,9 @@ export const PublicationsSection = () => {
             </div>
           </motion.div>
 
-          <div className="lg:w-2/3 w-full flex flex-col gap-4">
+          <div className="lg:w-2/3 w-full grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
             {loading ? (
-              <div className="py-12 text-center text-academic-muted">Loading publications...</div>
+              <div className="py-12 text-center text-academic-muted col-span-1 sm:col-span-2">Loading publications...</div>
             ) : publicationsData.length > 0 ? (
               publicationsData.map((pub, idx) => (
                 <motion.div
@@ -141,53 +141,53 @@ export const PublicationsSection = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: Math.min(idx * 0.05, 0.5) }}
-                  className="editorial-card min-w-0 p-5 sm:p-6 md:p-8 group flex items-start gap-5 md:gap-6"
+                  className="editorial-card min-w-0 p-5 sm:p-6 group flex flex-col h-full"
                 >
-                  <div className="hidden sm:flex mt-1 w-10 h-10 border border-academic-border rounded-full items-center justify-center text-academic-muted flex-shrink-0 group-hover:text-academic-brand group-hover:border-academic-brand transition-colors duration-500">
+                  <div className="hidden sm:flex mb-4 w-10 h-10 border border-academic-border rounded-full items-center justify-center text-academic-muted flex-shrink-0 group-hover:text-academic-brand group-hover:border-academic-brand transition-colors duration-500">
                     <FileText size={16} strokeWidth={1.5} />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex flex-col flex-1 h-full">
                     <button onClick={() => setSelectedPub(pub)} className="block text-left w-full focus:outline-none cursor-pointer">
                       <h3
-                        className="text-xl sm:text-2xl font-serif font-bold text-academic-accent mb-3 group-hover:text-academic-brand transition-colors duration-500 leading-snug break-words"
+                        className="text-lg sm:text-xl font-serif font-bold text-academic-accent mb-3 group-hover:text-academic-brand transition-colors duration-500 leading-snug break-words"
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.title) }}
                       />
                     </button>
                     <p
-                      className="text-base text-academic-muted font-sans font-medium mb-4 leading-relaxed break-words"
+                      className="text-sm text-academic-muted font-sans font-medium mb-4 leading-relaxed break-words flex-1"
                       dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.authors) }}
                     />
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-5 border-t border-academic-border text-sm text-academic-muted font-sans uppercase tracking-wider">
+                    <div className="flex flex-col gap-3 pt-4 border-t border-academic-border text-xs text-academic-muted font-sans uppercase tracking-wider mt-auto">
                       <div className="flex items-center gap-3 min-w-0">
                         {pub.venue?.toLowerCase().includes("chemistry") && pub.venue?.toLowerCase().includes("european journal") && (
                           <img 
                             src="https://chemistry-europe.onlinelibrary.wiley.com/cover/15213765" 
                             alt="Chemistry – A European Journal Logo" 
-                            className="w-8 h-10 object-contain border border-academic-border bg-white flex-shrink-0"
+                            className="w-6 h-8 object-contain border border-academic-border bg-white flex-shrink-0"
                           />
                         )}
                         <span
-                          className="min-w-0 italic leading-relaxed break-words sm:pr-4"
+                          className="min-w-0 italic leading-relaxed break-words"
                           dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.venue) }}
                         />
                       </div>
                       <span
-                        className="font-semibold text-academic-accent flex-shrink-0 border border-academic-border px-3 py-1 bg-academic-surface"
+                        className="font-semibold text-academic-accent flex-shrink-0 border border-academic-border px-3 py-1 bg-academic-surface self-start"
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.year) }}
                       />
                     </div>
                     <button
                       onClick={() => setSelectedPub(pub)}
-                      className="mt-5 inline-flex items-center gap-2 text-sm font-sans font-bold uppercase tracking-wider text-academic-accent hover:text-academic-brand transition-colors duration-500 group/link cursor-pointer"
+                      className="mt-5 inline-flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-wider text-academic-accent hover:text-academic-brand transition-colors duration-500 group/link cursor-pointer"
                     >
-                      View Summary & Details
+                      View Details
                       <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform duration-500" />
                     </button>
                   </div>
                 </motion.div>
               ))
             ) : (
-              <div className="py-12 text-center text-academic-muted">No publications added yet. Add some in the Admin Panel.</div>
+              <div className="py-12 text-center text-academic-muted col-span-1 sm:col-span-2">No publications added yet. Add some in the Admin Panel.</div>
             )}
           </div>
         </div>

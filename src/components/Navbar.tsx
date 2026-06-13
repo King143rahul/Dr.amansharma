@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { name: 'Research', href: '/research' },
   { name: 'Startup', href: '/startup' },
   { name: 'Gallery', href: '/gallery' },
+  { name: 'Team', href: '/team' },
   { name: 'Contact', href: '/contact' },
 ];
 
@@ -91,12 +92,12 @@ export const Navbar = () => {
         className="absolute top-0 left-0 h-0.5 bg-gradient-to-r from-academic-brand via-emerald-500 to-teal-400 transition-all duration-100 ease-out z-50" 
         style={{ width: '0%' }}
       />
-      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4 flex items-center justify-between gap-3">
         <Link 
           to="/"
-          className="min-w-0 text-xl font-serif font-bold text-academic-accent cursor-pointer flex items-center gap-2 group/logo"
+          className="min-w-0 flex-shrink flex items-center gap-2 group/logo text-xl font-serif font-bold text-academic-accent cursor-pointer"
         >
-          <div className="text-academic-brand group-hover/logo:rotate-360 transition-transform duration-1000 ease-in-out">
+          <div className="shrink-0 text-academic-brand">
             <Atom size={24} className="animate-[spin_12s_linear_infinite]" strokeWidth={1.8} />
           </div>
           <span className="truncate tracking-tight text-base sm:text-xl">
@@ -105,7 +106,7 @@ export const Navbar = () => {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:block">
+        <nav className="hidden md:block shrink-0 ml-4">
           <NavHeader items={NAV_LINKS} />
         </nav>
 

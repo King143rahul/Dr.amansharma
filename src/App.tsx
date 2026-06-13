@@ -13,6 +13,7 @@ import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Invitation from './pages/Invitation';
 import AdminDashboard from './pages/AdminDashboard';
+import Team from './pages/Team';
 
 const PublicLayout = () => {
   return (
@@ -34,10 +35,10 @@ function App() {
           {/* Public Routes with Navbar and Footer */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
-            <Route path="/about" element={<Home />} />
             <Route path="/research" element={<Research />} />
             <Route path="/startup" element={<Startup />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/team" element={<Team />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<Home />} />
           </Route>
