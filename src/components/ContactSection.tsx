@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mail, Send, GraduationCap, MessageCircle, BookOpen } from 'lucide-react';
+import { Mail, Send, MessageCircle, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { db } from '../lib/supabase';

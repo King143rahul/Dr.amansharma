@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, FileText, Users } from 'lucide-react';
+import { ArrowRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import amanSharmaPhoto from '../assets/aman sharma photo.webp';
 import { useEffect, useState } from 'react';

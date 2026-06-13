@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, Award, BookOpen, User, Sparkles } from 'lucide-react';
+import { GraduationCap, Award, User } from 'lucide-react';
 import { db } from '../lib/supabase';
 
 interface Student {

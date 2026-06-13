@@ -1,5 +1,4 @@
-import { BookOpen, ExternalLink, GraduationCap, Mail, MapPin, Microscope, Network, Globe, Link as LinkIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { BookOpen, GraduationCap, Mail, MapPin, Microscope, Network, Globe, Link as LinkIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { db } from '../lib/supabase';
 
@@ -25,13 +24,7 @@ const getIcon = (name: string) => {
   return <IconComponent size={18} strokeWidth={1.8} />;
 };
 
-const QUICK_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'Research', href: '/research' },
-  { label: 'Startup', href: '/startup' },
-  { label: 'Team', href: '/team' },
-  { label: 'Contact', href: '/contact' },
-];
+
 
 const SOCIAL_LINKS = [
   {
