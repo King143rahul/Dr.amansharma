@@ -101,7 +101,7 @@ export const AboutSection = () => {
               className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-academic-accent mb-8 sm:mb-10 leading-tight"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(subheading) }}
             />
-            <div className="space-y-5 sm:space-y-6 text-academic-muted text-base sm:text-lg leading-relaxed font-sans font-medium">
+            <div className="space-y-5 sm:space-y-6 text-academic-muted text-base sm:text-lg leading-relaxed font-sans font-medium" style="text-align: justify;">
               {loading ? (
                 <div className="animate-pulse space-y-4">
                   <div className="h-4 bg-academic-border rounded w-full"></div>
