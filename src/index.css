@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  --color-academic-bg: #ffffff;
+  --color-academic-surface: #f3f7f5;
+  --color-academic-border: #cbd5d1;
+  --color-academic-text: #07120f;
+  --color-academic-muted: #34443f;
+  --color-academic-accent: #07120f;
+  --color-academic-brand: #05603f;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-noto: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+@layer base {
+  body {
+    @apply bg-academic-bg text-academic-text font-sans antialiased overflow-x-hidden selection:bg-academic-brand/15 selection:text-academic-brand;
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
+
+  input, textarea, select, button {
+    font: inherit;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight text-academic-accent;
+  }
+}
+
+@layer utilities {
+  .editorial-card {
+    @apply bg-white border border-academic-border shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:border-academic-brand/40;
+  }
+  .editorial-heading {
+    @apply font-serif font-bold text-academic-accent;
+  }
+  .editorial-subheading {
+    @apply font-sans font-bold text-academic-brand uppercase tracking-wider text-sm mb-3;
+  }
+
+  .chemistry-grid {
+    background-image:
+      linear-gradient(rgba(5, 96, 63, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(5, 96, 63, 0.1) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .name-display-classic {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  .name-display-clean {
+    font-family: var(--font-sans);
+    font-weight: 700;
+  }
+
+  .name-display-editorial {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 700;
+  }
+
+  .name-display-noto {
+    font-family: var(--font-noto);
+    font-weight: 700;
+  }
+
+  .mobile-section {
+    @apply py-8 sm:py-10 lg:py-12;
+  }
+
+  @media (max-width: 640px) {
+    body {
+      font-size: 16px;
+    }
+
+    .editorial-subheading {
+      @apply text-xs;
+    }
+
+    .chemistry-grid {
+      background-size: 32px 32px;
+    }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(5, 96, 99, 0.2);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(5, 96, 99, 0.4);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .marquee-container {
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+    mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+  }
+
+  .marquee-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 1.5rem;
+    animation: marquee 35s linear infinite;
+    width: max-content;
+    padding: 1rem 0;
+  }
+
+  .marquee-content:hover {
+    animation-play-state: paused;
+  }
+}
