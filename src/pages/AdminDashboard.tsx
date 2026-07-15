@@ -1220,7 +1220,6 @@ setSaving(true);
           <div className="space-y-4">
             <RichTextField label="Section Title" value={title} onChange={setTitle} />
             <RichTextField label="Description" value={desc} onChange={setDesc} multiline rows={4} />
-            <RichTextField label="Extended Description" value={extendedDesc} onChange={setExtendedDesc} multiline rows={6} />
           </div>
           <div className="flex flex-col items-center justify-start border border-dashed border-academic-border p-6 rounded-xl bg-academic-surface/30">
             <label className="block text-sm font-bold text-academic-muted mb-4 text-center">Startup Photo</label>
@@ -1320,6 +1319,10 @@ setSaving(true);
             </li>
           ))}
         </ul>
+
+        <div className="mb-8 border-t border-academic-border pt-8">
+          <RichTextField label="Extended Description" value={extendedDesc} onChange={setExtendedDesc} multiline rows={6} />
+        </div>
 
         <h4 className="editorial-subheading text-lg mb-4 text-academic-brand">External Links</h4>
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-academic-surface p-4 rounded-xl border border-academic-border/50">
