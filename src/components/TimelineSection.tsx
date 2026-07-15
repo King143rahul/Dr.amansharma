@@ -52,9 +52,10 @@ export const TimelineSection = () => {
   }, []);
 
   return (
-    <section className="py-6 sm:py-10 bg-academic-surface relative overflow-hidden">
+    <section id="timeline" className="pt-2 sm:pt-6 pb-2 bg-white relative overflow-hidden border-b border-academic-border">
+      <div className="absolute inset-0 chemistry-grid opacity-90 pointer-events-none z-0"></div>
       {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20 z-0">
         <div className="absolute top-[20%] left-[10%] w-72 h-72 bg-academic-brand/30 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-[20%] right-[10%] w-96 h-96 bg-blue-500/20 rounded-full blur-[120px]"></div>
       </div>
@@ -77,82 +78,76 @@ export const TimelineSection = () => {
             A track record of academic excellence, research leadership, and entrepreneurial vision.
           </p>
         </motion.div>
+      </div>
 
-        <div className="relative mt-12 md:mt-16 w-full">
-          {/* Horizontal Line for Desktop */}
-          <div className="hidden md:block absolute top-1/2 left-0 right-0 h-px bg-gray-300 transform -translate-y-1/2 z-0"></div>
-          
+      {/* Full-width container for the horizontal line */}
+      <div className="relative mt-8 md:mt-10 w-full">
+        {/* Horizontal Line for Desktop - Now spans the entire viewport width */}
+        <div className="hidden md:block absolute top-1/2 left-0 right-0 h-[2px] bg-academic-brand/60 transform -translate-y-1/2 z-10"></div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Vertical Line for Mobile */}
           <div className="block md:hidden absolute left-8 top-0 bottom-0 w-px bg-gray-300 z-0"></div>
 
-          <div className="flex flex-col md:flex-row gap-8 md:gap-0 relative z-10 w-full md:items-stretch md:overflow-x-auto hide-scrollbar pb-10 pt-4 md:px-8 snap-x">
+          <div className="flex flex-col md:flex-row gap-8 md:gap-0 relative z-10 w-full md:items-stretch md:overflow-x-auto hide-scrollbar pb-2 pt-4 md:px-8 snap-x">
             {timelineData.map((item, index) => {
-              const colors = [
-                { text: "text-blue-500", bg: "bg-blue-500" },
-                { text: "text-orange-500", bg: "bg-orange-500" },
-                { text: "text-yellow-500", bg: "bg-yellow-500" },
-                { text: "text-emerald-500", bg: "bg-emerald-500" },
-                { text: "text-purple-500", bg: "bg-purple-500" },
-                { text: "text-rose-500", bg: "bg-rose-500" },
-                { text: "text-cyan-500", bg: "bg-cyan-500" },
-              ];
-              const color = colors[index % colors.length];
+              const color = { text: "text-academic-brand", bg: "bg-academic-brand" };
 
               return (
-              <div key={item.id} className="relative flex flex-row md:flex-col md:min-w-[180px] flex-1 group snap-center items-stretch md:items-center">
-                
-                {/* Desktop Top Content */}
-                <div className="hidden md:flex flex-1 flex-col justify-end w-full pb-2 px-2 min-h-[80px]">
-                  {index % 2 === 0 ? (
+                <div key={item.id} className="relative flex flex-row md:flex-col md:min-w-[180px] flex-1 group snap-center items-stretch md:items-center">
+
+                  {/* Desktop Top Content */}
+                  <div className="hidden md:flex flex-1 flex-col justify-end w-full pb-1 px-2 min-h-[80px]">
+                    {index % 2 === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        className="text-center"
+                      >
+                        <h3 className="text-[12px] font-bold text-gray-800 mb-1 leading-tight">{item.title}</h3>
+                        <h4 className="text-[10px] font-semibold text-gray-500 mb-1">{item.organization}</h4>
+                        {item.description && <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3">{item.description}</p>}
+                      </motion.div>
+                    ) : (
+                      <div className="flex-1 flex items-end justify-center pb-0">
+                        <span className={`text-sm font-bold ${color.text} -mb-2`}>{item.year}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Timeline node */}
+                  <div className="flex-none relative flex items-center justify-center my-0 h-10 w-10 md:h-8 md:w-full ml-0">
+                    <div className={`w-3 h-3 rounded-full ${color.bg} border-[2px] border-white shadow-sm z-20 transition-transform group-hover:scale-125`}></div>
+                    {/* Vertical connector line for desktop */}
+                    <div className={`hidden md:block absolute left-1/2 -translate-x-1/2 w-px bg-gray-300 -z-10 ${index % 2 === 0 ? 'bottom-1/2 h-8' : 'top-1/2 h-8'}`}></div>
+                  </div>
+
+                  {/* Desktop Bottom Content */}
+                  <div className="hidden md:flex flex-1 flex-col justify-start w-full pt-1 px-2 min-h-[80px]">
+                    {index % 2 !== 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        className="text-center"
+                      >
+                        <h3 className="text-[12px] font-bold text-gray-800 mb-1 leading-tight">{item.title}</h3>
+                        <h4 className="text-[10px] font-semibold text-gray-500 mb-1">{item.organization}</h4>
+                        {item.description && <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3">{item.description}</p>}
+                      </motion.div>
+                    ) : (
+                      <div className="flex-1 flex items-start justify-center pt-0">
+                        <span className={`text-sm font-bold ${color.text} -mt-2`}>{item.year}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mobile Content */}
+                  <div className="md:hidden flex-1 pl-4 pb-8 pt-1">
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="text-center"
-                    >
-                      <h3 className="text-[12px] font-bold text-gray-800 mb-1 leading-tight">{item.title}</h3>
-                      <h4 className="text-[10px] font-semibold text-gray-500 mb-1">{item.organization}</h4>
-                      {item.description && <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3">{item.description}</p>}
-                    </motion.div>
-                  ) : (
-                    <div className="flex-1 flex items-end justify-center pb-1">
-                      <span className={`text-sm font-bold ${color.text}`}>{item.year}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Timeline node */}
-                <div className="flex-none relative flex items-center justify-center my-0 h-10 w-10 md:h-8 md:w-full ml-0">
-                  <div className={`w-3 h-3 rounded-full ${color.bg} border-[2px] border-white shadow-sm z-20 transition-transform group-hover:scale-125`}></div>
-                  {/* Vertical connector line for desktop */}
-                  <div className={`hidden md:block absolute left-1/2 -translate-x-1/2 w-px bg-gray-300 -z-10 ${index % 2 === 0 ? 'bottom-1/2 h-8' : 'top-1/2 h-8'}`}></div>
-                </div>
-
-                {/* Desktop Bottom Content */}
-                <div className="hidden md:flex flex-1 flex-col justify-start w-full pt-2 px-2 min-h-[80px]">
-                  {index % 2 !== 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="text-center"
-                    >
-                      <h3 className="text-[12px] font-bold text-gray-800 mb-1 leading-tight">{item.title}</h3>
-                      <h4 className="text-[10px] font-semibold text-gray-500 mb-1">{item.organization}</h4>
-                      {item.description && <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3">{item.description}</p>}
-                    </motion.div>
-                  ) : (
-                    <div className="flex-1 flex items-start justify-center pt-1">
-                      <span className={`text-sm font-bold ${color.text}`}>{item.year}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mobile Content */}
-                <div className="md:hidden flex-1 pl-4 pb-8 pt-1">
-                  <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
@@ -170,10 +165,10 @@ export const TimelineSection = () => {
                       <p className="text-[11px] text-gray-400 leading-relaxed">
                         {item.description}
                       </p>
-                  </motion.div>
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
-            );
+              );
             })}
           </div>
         </div>

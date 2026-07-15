@@ -85,7 +85,7 @@ export const AboutSection = () => {
   const paragraphs = bioText.split('\n').filter(p => p.trim() !== '');
 
   return (
-    <section id="about" className="py-8 sm:py-10 lg:py-12 bg-academic-surface border-b border-academic-border relative z-10">
+    <section id="about" className="pt-4 pb-8 sm:pb-10 lg:pb-12 bg-green-50/30 border-b border-academic-border relative z-10">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
@@ -96,7 +96,6 @@ export const AboutSection = () => {
         >
           {/* Bio Text */}
           <div className="w-full">
-            <div className="editorial-subheading">About the Researcher</div>
             <h2 
               className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-academic-accent mb-8 sm:mb-10 leading-tight"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(subheading) }}

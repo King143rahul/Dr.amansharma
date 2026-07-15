@@ -977,6 +977,8 @@ const StartupEditor = () => {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [extendedDesc, setExtendedDesc] = useState("");
+  const [agencies, setAgencies] = useState<Array<{ id: string; name: string; logoUrl: string }>>([]);
+  const [newAgency, setNewAgency] = useState({ name: "", logoUrl: "" });
   const [features, setFeatures] = useState<string[]>([
     'Sustainable Wastewater Treatment',
     'Eco-friendly Technologies',
@@ -1001,7 +1003,19 @@ const StartupEditor = () => {
       if (!error && data) {
         setTitle(data.title ?? "");
         setDesc(data.description ?? "");
-        setExtendedDesc(data.extended_description ?? "");
+        
+        let parsedDesc = data.extended_description ?? "";
+        let parsedAgencies: any[] = [];
+        try {
+          if (parsedDesc.trim().startsWith('{')) {
+            const parsed = JSON.parse(parsedDesc);
+            parsedDesc = parsed.text || "";
+            parsedAgencies = parsed.agencies || [];
+          }
+        } catch (e) {}
+        setExtendedDesc(parsedDesc);
+        setAgencies(parsedAgencies.map((a: any, i: number) => ({ id: `${i}`, ...a })));
+
         setFeatures(
           data.features?.length > 0 
             ? data.features 
@@ -1027,7 +1041,7 @@ const StartupEditor = () => {
         id: 'section',
         title,
         description: desc,
-        extended_description: extendedDesc,
+        extended_description: JSON.stringify({ text: extendedDesc, agencies: agencies.map(({ name, logoUrl }) => ({ name, logoUrl })) }),
         features,
         photoUrl,
         externalLinks: links.map(({ label, url }) => ({ label, url })),
@@ -1143,6 +1157,16 @@ const StartupEditor = () => {
 
   const deleteFeature = (index: number) => {
     setFeatures(features.filter((_, i) => i !== index));
+  };
+
+  const addAgency = () => {
+    if (!newAgency.name.trim()) return;
+    setAgencies([...agencies, { id: `${Date.now()}`, ...newAgency }]);
+    setNewAgency({ name: "", logoUrl: "" });
+  };
+
+  const deleteAgency = (id: string) => {
+    setAgencies(agencies.filter((a) => a.id !== id));
   };
 
   return (
@@ -1265,6 +1289,53 @@ const StartupEditor = () => {
                 <span className="break-all text-academic-muted text-sm">{l.url}</span>
               </div>
               <button onClick={() => deleteLink(l.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                <Trash2 size={18} />
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <h4 className="editorial-subheading text-lg mb-4 text-academic-brand mt-8">Grant Agencies</h4>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-academic-surface p-4 rounded-xl border border-academic-border/50">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={newAgency.name}
+              onChange={(e) => setNewAgency({ ...newAgency, name: e.target.value })}
+              placeholder="Agency Name"
+              className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:border-academic-brand"
+            />
+          </div>
+          <input
+            type="url"
+            value={newAgency.logoUrl}
+            onChange={(e) => setNewAgency({ ...newAgency, logoUrl: e.target.value })}
+            placeholder="Logo URL (optional)"
+            className="flex-1 p-3 border border-academic-border rounded-lg focus:outline-none focus:border-academic-brand"
+          />
+          <button
+            onClick={addAgency}
+            className="flex items-center justify-center bg-academic-text text-white px-5 py-3 rounded-lg hover:bg-black transition shadow-sm font-medium"
+          >
+            <Plus size={16} className="mr-2" /> Add Agency
+          </button>
+        </div>
+        
+        <ul className="space-y-3 mb-8">
+          {agencies.map((a) => (
+            <li key={a.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white border border-academic-border p-4 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 min-w-0">
+                {a.logoUrl && (
+                  <div className="w-10 h-10 flex-shrink-0 bg-academic-surface rounded-md p-1 border border-academic-border">
+                    <img src={a.logoUrl} alt={a.name} className="w-full h-full object-contain" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <span className="font-bold text-academic-accent mr-2">{a.name}</span>
+                  {a.logoUrl && <span className="break-all text-academic-muted text-sm">{a.logoUrl}</span>}
+                </div>
+              </div>
+              <button onClick={() => deleteAgency(a.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
                 <Trash2 size={18} />
               </button>
             </li>

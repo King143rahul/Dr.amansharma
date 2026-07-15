@@ -31,17 +31,25 @@ const getValueFontSize = (val: string) => {
 
 export const HeroSection = () => {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState({
-    name: "Dr Aman Sharma, MRSC",
-    heroSubtitle: "Sustainability Innovator & Researcher",
-    heroRoles: "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
-    heroDesc: "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
-    heroNameStyle: "classic",
-    profilePicUrl: "",
-    experienceValue: "4+",
-    patentsValue: "4+",
-    publicationsValue: "20+",
-    grantsValue: "1"
+  const [settings, setSettings] = useState(() => {
+    const cached = localStorage.getItem('hero_settings_v2');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return {
+      name: "Dr Aman Sharma, MRSC",
+      heroSubtitle: "Academician & Researcher",
+      heroRoles: "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
+      heroDesc: "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
+      heroNameStyle: "classic",
+      profilePicUrl: "",
+      experienceValue: "4+",
+      patentsValue: "4+",
+      publicationsValue: "20+",
+      grantsValue: "1"
+    };
   });
 
   useEffect(() => {
@@ -53,18 +61,20 @@ export const HeroSection = () => {
         .single();
       
       if (!error && data) {
-        setSettings({
+        const newSettings = {
           name: data.name || "Dr Aman Sharma, MRSC",
-          heroSubtitle: data.heroSubtitle || settings.heroSubtitle,
-          heroRoles: data.heroRoles || settings.heroRoles,
-          heroDesc: data.heroDesc || settings.heroDesc,
+          heroSubtitle: data.heroSubtitle || "Academician & Researcher",
+          heroRoles: data.heroRoles || "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
+          heroDesc: data.heroDesc || "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
           heroNameStyle: data.heroNameStyle || "classic",
           profilePicUrl: data.profilePicUrl || "",
           experienceValue: data.experienceValue || "4+",
           patentsValue: data.patentsValue || "4+",
           publicationsValue: data.publicationsValue || "20+",
           grantsValue: data.grantsValue || "1"
-        });
+        };
+        setSettings(newSettings);
+        localStorage.setItem('hero_settings_v2', JSON.stringify(newSettings));
       }
     };
 
@@ -79,18 +89,20 @@ export const HeroSection = () => {
         (payload) => {
           const data = payload.new as any;
           if (data) {
-            setSettings({
+            const newSettings = {
               name: data.name || "Dr Aman Sharma, MRSC",
-              heroSubtitle: data.heroSubtitle || settings.heroSubtitle,
-              heroRoles: data.heroRoles || settings.heroRoles,
-              heroDesc: data.heroDesc || settings.heroDesc,
+              heroSubtitle: data.heroSubtitle || "Academician & Researcher",
+              heroRoles: data.heroRoles || "Assistant Professor of Chemistry in Bengaluru (Bangalore) | Materials Chemist | Founder, AMSH Endeavours",
+              heroDesc: data.heroDesc || "Transforming bio-waste into advanced functional materials for sustainable water treatment and environmental remediation at the intersection of nanotechnology and green chemistry.",
               heroNameStyle: data.heroNameStyle || "classic",
               profilePicUrl: data.profilePicUrl || "",
               experienceValue: data.experienceValue || "4+",
               patentsValue: data.patentsValue || "4+",
               publicationsValue: data.publicationsValue || "20+",
               grantsValue: data.grantsValue || "1"
-            });
+            };
+            setSettings(newSettings);
+            localStorage.setItem('hero_settings_v2', JSON.stringify(newSettings));
           }
         }
       )
@@ -132,28 +144,32 @@ export const HeroSection = () => {
   const renderStatsCircles = () => (
     <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full max-w-[16rem] sm:max-w-xs mt-2 relative z-10">
       {[
-        { value: settings.experienceValue, label: "Years\nExperience" },
-        { value: settings.patentsValue, label: "Filed\nPatents" },
-        { value: settings.publicationsValue, label: "Publications" },
-        { value: settings.grantsValue, label: "Startup\nGovt Grant" }
+        { value: settings.experienceValue, label: "Years\nExperience", targetId: "#timeline", route: "/" },
+        { value: settings.patentsValue, label: "Filed\nPatents", targetId: "#patents", route: "/research" },
+        { value: settings.publicationsValue, label: "Publications", targetId: "#publications", route: "/research" },
+        { value: settings.grantsValue, label: "Startup\nGovt Grant", targetId: "#startup", route: "/startup" }
       ].map((stat, i) => {
         const cleanedValue = cleanStatValue(stat.value);
         return (
-          <div key={i} className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 mx-auto rounded-full border border-academic-brand/20 bg-white/60 backdrop-blur-md shadow-lg hover:shadow-xl hover:border-academic-brand/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+          <button 
+            key={i} 
+            onClick={() => goToSection(stat.targetId, stat.route)}
+            className="flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 mx-auto rounded-full border border-academic-brand/20 bg-white/60 backdrop-blur-md shadow-lg hover:shadow-xl hover:border-academic-brand/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-academic-brand/30"
+          >
             <span className={`${getValueFontSize(cleanedValue)} font-bold text-academic-accent mb-0.5 sm:mb-1`}>{cleanedValue}</span>
             <span className="text-[9px] sm:text-[10px] lg:text-xs text-center leading-tight px-2 text-academic-muted whitespace-pre-line font-semibold uppercase tracking-wider">{stat.label}</span>
-          </div>
+          </button>
         );
       })}
     </div>
   );
 
   return (
-    <section className="relative min-h-[70vh] lg:min-h-[75vh] flex items-center justify-center pt-16 pb-8 sm:pt-20 sm:pb-12 lg:pt-24 lg:pb-16 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
-      <div className="chemistry-grid absolute inset-0 z-0 opacity-70" />
+    <section className="relative flex items-start justify-center pt-24 pb-12 sm:pt-28 sm:pb-16 lg:pt-32 lg:pb-24 overflow-hidden bg-green-50/50 text-academic-text border-b border-academic-border">
+      <div className="chemistry-grid absolute inset-0 z-0 opacity-70" style={{ backgroundPosition: 'left bottom' }} />
       <div className="absolute inset-x-0 top-0 z-0 h-16 border-b border-academic-border bg-white/80 sm:h-20 lg:h-24" />
       
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4 relative z-10 grid w-full items-center gap-8 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4 relative z-10 grid w-full items-start gap-8 sm:gap-10 lg:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="order-2 flex flex-col items-center text-center lg:order-1 lg:items-start lg:text-left">
         
         <motion.div
@@ -163,7 +179,7 @@ export const HeroSection = () => {
           className="editorial-subheading mb-2 flex items-center justify-center gap-3 sm:mb-4 lg:justify-start"
         >
           <span className="w-8 h-px bg-academic-brand"></span>
-          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle.replace(/Academician & Researcher/i, 'Researcher & Academician')) }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle) }} />
           <span className="w-8 h-px bg-academic-brand"></span>
         </motion.div>
 

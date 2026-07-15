@@ -54,7 +54,14 @@ export const PublicationsSection = () => {
             return (b.year || '').localeCompare(a.year || '');
           });
           
-          setPublicationsData(data);
+          // Filter out patents
+          const filteredData = data.filter((p) => {
+            const venue = (p.venue || '').toLowerCase();
+            const title = (p.title || '').toLowerCase();
+            return !venue.includes('patent') && !title.includes('patent');
+          });
+          
+          setPublicationsData(filteredData);
         }
       } catch (err) {
         console.error("Error fetching publications:", err);
@@ -124,6 +131,9 @@ export const PublicationsSection = () => {
     };
   }, []);
 
+  const publicationsList = publicationsData.filter(p => !p.venue?.toLowerCase().includes("patent"));
+  const patentsList = publicationsData.filter(p => p.venue?.toLowerCase().includes("patent"));
+
   return (
     <section id="publications" className="py-8 sm:py-10 lg:py-12 relative z-10 bg-academic-bg border-b border-academic-border">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-3 lg:px-4">
@@ -174,8 +184,8 @@ export const PublicationsSection = () => {
             <div className="flex flex-col">
               {loading ? (
                 <div className="py-12 text-center text-academic-muted">Loading publications...</div>
-              ) : publicationsData.filter(p => !p.venue?.toLowerCase().includes("patent")).length > 0 ? (
-                publicationsData.filter(p => !p.venue?.toLowerCase().includes("patent")).map((pub, idx) => (
+              ) : publicationsList.length > 0 ? (
+                publicationsList.map((pub, idx) => (
                   <motion.div
                      key={pub.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -185,7 +195,7 @@ export const PublicationsSection = () => {
                     className="flex gap-4 sm:gap-6 py-5 border-b border-academic-border/50 group last:border-0"
                   >
                     <div className="text-academic-brand font-serif font-bold text-lg min-w-[24px] pt-0.5">
-                      {idx + 1}.
+                      {publicationsList.length - idx}.
                     </div>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => setSelectedPub(pub)} className="block text-left w-full focus:outline-none cursor-pointer">
@@ -212,15 +222,15 @@ export const PublicationsSection = () => {
           </div>
 
           {/* Patents Section */}
-          <div className={publicationsData.filter(p => p.venue?.toLowerCase().includes("patent")).length > 0 ? "block" : "hidden"}>
+          <div id="patents" className={patentsList.length > 0 ? "block" : "hidden"}>
             <h3 className="text-2xl font-serif font-bold text-academic-accent mb-6 pb-3 border-b border-academic-border flex items-center gap-3">
                <FileText className="text-academic-brand" size={24} /> Patents
             </h3>
             <div className="flex flex-col">
               {loading ? (
                 <div className="py-12 text-center text-academic-muted">Loading patents...</div>
-              ) : publicationsData.filter(p => p.venue?.toLowerCase().includes("patent")).length > 0 ? (
-                publicationsData.filter(p => p.venue?.toLowerCase().includes("patent")).map((pub, idx) => (
+              ) : patentsList.length > 0 ? (
+                patentsList.map((pub, idx) => (
                   <motion.div
                      key={pub.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -230,7 +240,7 @@ export const PublicationsSection = () => {
                     className="flex gap-4 sm:gap-6 py-5 border-b border-academic-border/50 group last:border-0"
                   >
                     <div className="text-academic-brand font-serif font-bold text-lg min-w-[24px] pt-0.5">
-                      {idx + 1}.
+                      {patentsList.length - idx}.
                     </div>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => setSelectedPub(pub)} className="block text-left w-full focus:outline-none cursor-pointer">
