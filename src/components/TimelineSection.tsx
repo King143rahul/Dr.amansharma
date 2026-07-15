@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Rocket, Microscope, GraduationCap, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';

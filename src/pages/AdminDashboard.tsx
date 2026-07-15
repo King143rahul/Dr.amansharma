@@ -1432,7 +1432,7 @@ const PublicationsEditor = () => {
     if (settingsData?.seoKeywords) {
       try { orderMap = JSON.parse(settingsData.seoKeywords); } catch (e) {}
     }
-    setPubOrderMap(orderMap);
+
 
     const { data, error } = await db
       .from('publications')
@@ -1717,7 +1717,7 @@ const PublicationsEditor = () => {
       newMap[p.id] = i + 1;
     });
 
-    setPubOrderMap(newMap);
+
     await db.from('general_settings').update({ seoKeywords: JSON.stringify(newMap) }).eq('id', 'settings');
   };
 
