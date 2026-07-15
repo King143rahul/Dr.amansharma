@@ -978,6 +978,7 @@ const StartupEditor = () => {
   const [desc, setDesc] = useState("");
   const [extendedDesc, setExtendedDesc] = useState("");
   const [agencies, setAgencies] = useState<Array<{ id: string; name: string; logoUrl: string }>>([]);
+  const [grantAgenciesTitle, setGrantAgenciesTitle] = useState("Supported By Grant Agencies");
   const [newAgency, setNewAgency] = useState({ name: "", logoUrl: "" });
   const [features, setFeatures] = useState<string[]>([
     'Sustainable Wastewater Treatment',
@@ -1006,15 +1007,20 @@ const StartupEditor = () => {
         
         let parsedDesc = data.extended_description ?? "";
         let parsedAgencies: any[] = [];
+        let parsedAgenciesTitle = "Supported By Grant Agencies";
         try {
           if (parsedDesc.trim().startsWith('{')) {
             const parsed = JSON.parse(parsedDesc);
             parsedDesc = parsed.text || "";
             parsedAgencies = parsed.agencies || [];
+            if (parsed.agenciesTitle) {
+              parsedAgenciesTitle = parsed.agenciesTitle;
+            }
           }
         } catch (e) {}
         setExtendedDesc(parsedDesc);
         setAgencies(parsedAgencies.map((a: any, i: number) => ({ id: `${i}`, ...a })));
+        setGrantAgenciesTitle(parsedAgenciesTitle);
 
         setFeatures(
           data.features?.length > 0 
@@ -1036,12 +1042,17 @@ const StartupEditor = () => {
 
   const save = async () => {
     setSaving(true);
+setSaving(true);
     try {
       const { error } = await db.from('startup').upsert({
         id: 'section',
         title,
         description: desc,
-        extended_description: JSON.stringify({ text: extendedDesc, agencies: agencies.map(({ name, logoUrl }) => ({ name, logoUrl })) }),
+        extended_description: JSON.stringify({
+          text: extendedDesc,
+          agencies: agencies.map(({ id, ...rest }) => rest),
+          agenciesTitle: grantAgenciesTitle
+        }),
         features,
         photoUrl,
         externalLinks: links.map(({ label, url }) => ({ label, url })),
@@ -1295,7 +1306,16 @@ const StartupEditor = () => {
           ))}
         </ul>
 
-        <h4 className="editorial-subheading text-lg mb-4 text-academic-brand mt-8">Grant Agencies</h4>
+        <h4 className="editorial-subheading text-lg mb-4 text-academic-brand mt-8">Grant Agencies Section</h4>
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-academic-muted mb-2">Section Title</label>
+          <input
+            type="text"
+            value={grantAgenciesTitle}
+            onChange={(e) => setGrantAgenciesTitle(e.target.value)}
+            className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:border-academic-brand mb-4"
+          />
+        </div>
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-academic-surface p-4 rounded-xl border border-academic-border/50">
           <div className="flex-1">
             <input

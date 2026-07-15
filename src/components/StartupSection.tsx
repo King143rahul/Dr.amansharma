@@ -61,11 +61,15 @@ export const StartupSection = () => {
 
   let extendedDescriptionText = data?.extended_description || "";
   let grantAgenciesList: any[] = [];
+  let grantAgenciesTitle = "Supported By Grant Agencies";
   try {
     if (extendedDescriptionText.trim().startsWith('{')) {
       const parsed = JSON.parse(extendedDescriptionText);
       extendedDescriptionText = parsed.text || "";
       grantAgenciesList = parsed.agencies || [];
+      if (parsed.agenciesTitle) {
+        grantAgenciesTitle = parsed.agenciesTitle;
+      }
     }
   } catch (e) {
     // it's just text
@@ -162,7 +166,7 @@ export const StartupSection = () => {
               {/* Grant Agencies */}
               <div className="w-full text-center">
                 <h3 className="text-academic-muted font-sans text-xs sm:text-sm font-bold tracking-[0.2em] uppercase mb-6 sm:mb-8">
-                  Supported By Grant Agencies
+                  {grantAgenciesTitle}
                 </h3>
                 
                 <div className="flex flex-wrap justify-center items-start gap-6 sm:gap-10">
