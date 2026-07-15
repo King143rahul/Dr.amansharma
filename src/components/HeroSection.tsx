@@ -149,7 +149,7 @@ export const HeroSection = () => {
   );
 
   return (
-    <section className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center justify-center pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-32 lg:pb-16 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
+    <section className="relative min-h-[70vh] lg:min-h-[75vh] flex items-center justify-center pt-16 pb-8 sm:pt-20 sm:pb-12 lg:pt-24 lg:pb-16 overflow-hidden bg-academic-bg text-academic-text border-b border-academic-border">
       <div className="chemistry-grid absolute inset-0 z-0 opacity-70" />
       <div className="absolute inset-x-0 top-0 z-0 h-16 border-b border-academic-border bg-white/80 sm:h-20 lg:h-24" />
       
@@ -160,7 +160,7 @@ export const HeroSection = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="editorial-subheading mb-4 flex items-center justify-center gap-3 sm:mb-7 lg:justify-start"
+          className="editorial-subheading mb-2 flex items-center justify-center gap-3 sm:mb-4 lg:justify-start"
         >
           <span className="w-8 h-px bg-academic-brand"></span>
           <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.heroSubtitle.replace(/Academician & Researcher/i, 'Researcher & Academician')) }} />
@@ -168,7 +168,7 @@ export const HeroSection = () => {
         </motion.div>
 
         <motion.h1 
-          className="font-serif font-bold max-w-full text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-academic-accent leading-[1.1] mb-5 sm:mb-8"
+          className="font-serif font-bold max-w-full text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-academic-accent leading-[1.1] mb-4 sm:mb-6"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}

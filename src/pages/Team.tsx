@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, Award, User } from 'lucide-react';
+import { GraduationCap, Award, User, Mail } from 'lucide-react';
 import { db } from '../lib/supabase';
 
 interface Student {
@@ -9,6 +9,7 @@ interface Student {
   name: string;
   role: string;
   achievements: string;
+  email?: string;
   display_order: number;
 }
 
@@ -42,6 +43,7 @@ export default function Team() {
               name: parsed.name || "Student Name",
               role: parsed.role || "Research Student",
               achievements: parsed.achievements || "",
+              email: parsed.email || "",
               display_order: item.display_order || 0
             };
           });
@@ -188,6 +190,12 @@ export default function Team() {
                   <h3 className="text-2xl sm:text-3xl font-serif font-bold text-academic-accent mb-2 group-hover:text-academic-brand transition-colors duration-500">
                     {student.name}
                   </h3>
+                  
+                  {student.email && (
+                    <a href={`mailto:${student.email}`} className="text-sm font-bold text-academic-brand hover:underline inline-flex items-center gap-1.5 mb-2">
+                      <Mail size={14} /> {student.email}
+                    </a>
+                  )}
                   
                   {student.achievements && (
                     <div className="mt-4 pt-5 border-t border-academic-border/50">

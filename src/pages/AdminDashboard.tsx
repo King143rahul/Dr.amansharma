@@ -977,7 +977,12 @@ const StartupEditor = () => {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [extendedDesc, setExtendedDesc] = useState("");
-  const [features, setFeatures] = useState<string[]>([]);
+  const [features, setFeatures] = useState<string[]>([
+    'Sustainable Wastewater Treatment',
+    'Eco-friendly Technologies',
+    'Cost-effective Environmental Solutions',
+    'Government Grant-Supported'
+  ]);
   const [newFeature, setNewFeature] = useState("");
   const [links, setLinks] = useState<Array<{ id: string; label: string; url: string }>>([]);
   const [newLink, setNewLink] = useState({ label: "", url: "" });
@@ -997,7 +1002,16 @@ const StartupEditor = () => {
         setTitle(data.title ?? "");
         setDesc(data.description ?? "");
         setExtendedDesc(data.extended_description ?? "");
-        setFeatures(data.features ?? []);
+        setFeatures(
+          data.features?.length > 0 
+            ? data.features 
+            : [
+                'Sustainable Wastewater Treatment',
+                'Eco-friendly Technologies',
+                'Cost-effective Environmental Solutions',
+                'Government Grant-Supported'
+              ]
+        );
         setLinks(data.externalLinks?.map((l: any, i: number) => ({ id: `${i}`, ...l })) ?? []);
         setPhotoUrl(data.photoUrl ?? "");
       }
@@ -1121,6 +1135,12 @@ const StartupEditor = () => {
     setNewFeature("");
   };
 
+  const updateFeature = (index: number, value: string) => {
+    const newFeatures = [...features];
+    newFeatures[index] = value;
+    setFeatures(newFeatures);
+  };
+
   const deleteFeature = (index: number) => {
     setFeatures(features.filter((_, i) => i !== index));
   };
@@ -1200,8 +1220,13 @@ const StartupEditor = () => {
         <ul className="space-y-3 mb-8">
           {features.map((feature, idx) => (
             <li key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white border border-academic-border p-4 rounded-xl shadow-sm">
-              <span className="font-bold text-academic-accent mr-2">{feature}</span>
-              <button onClick={() => deleteFeature(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+              <input 
+                type="text" 
+                value={feature} 
+                onChange={(e) => updateFeature(idx, e.target.value)}
+                className="flex-1 font-bold text-academic-accent mr-2 bg-transparent border-b border-transparent hover:border-academic-border focus:border-academic-brand focus:outline-none px-2 py-1" 
+              />
+              <button onClick={() => deleteFeature(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Delete Feature">
                 <Trash2 size={18} />
               </button>
             </li>
@@ -1390,6 +1415,7 @@ interface Publication {
 
 const PublicationsEditor = () => {
   const [pubs, setPubs] = useState<Publication[]>([]);
+  const [pubOrderMap, setPubOrderMap] = useState<Record<string, number>>({});
   const [newPub, setNewPub] = useState<Omit<Publication, "id">>({ title: "", link: "", authors: "", venue: "", year: "", summary: "" });
   const [importing, setImporting] = useState(false);
   const [deletingPubIds, setDeletingPubIds] = useState<Set<string>>(new Set());
@@ -1399,10 +1425,16 @@ const PublicationsEditor = () => {
     confirmLabel?: string;
     onConfirm: () => void;
   } | null>(null);
-  const [orcidId, setOrcidId] = useState("0000-0001-5024-292X");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPubs = async () => {
+    const { data: settingsData } = await db.from('general_settings').select('seoKeywords').eq('id', 'settings').single();
+    let orderMap: Record<string, number> = {};
+    if (settingsData?.seoKeywords) {
+      try { orderMap = JSON.parse(settingsData.seoKeywords); } catch (e) {}
+    }
+    setPubOrderMap(orderMap);
+
     const { data, error } = await db
       .from('publications')
       .select('*');
@@ -1411,8 +1443,15 @@ const PublicationsEditor = () => {
       console.error(error);
       alert(`Failed to fetch publications: ${error.message}`);
     } else if (data) {
-      // Sort by the Google Scholar exact order using publicationOrder.json
+      // Sort by manual order map and fallback to Google Scholar order
       data.sort((a, b) => {
+        const orderA = orderMap[a.id];
+        const orderB = orderMap[b.id];
+        
+        if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+        if (orderA !== undefined) return -1;
+        if (orderB !== undefined) return 1;
+
         const indexA = publicationOrder.indexOf(a.title);
         const indexB = publicationOrder.indexOf(b.title);
         
@@ -1664,95 +1703,23 @@ const PublicationsEditor = () => {
     alert(`Successfully imported ${nonDuplicates.length} new publications! (Skipped ${parsedPubs.length - nonDuplicates.length} duplicates)`);
   };
 
-  const handleOrcidImport = async () => {
-    if (!orcidId.trim()) {
-      alert("Please enter your ORCID iD.");
-      return;
-    }
+  const reorderPub = async (currentIndex: number, newPosition: number) => {
+    const targetIndex = Math.max(0, Math.min(pubs.length - 1, newPosition - 1));
+    if (currentIndex === targetIndex) return;
 
-    setImporting(true);
-    try {
-      // Fetch Works list summary first
-      const worksRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId.trim()}/works`, {
-        headers: {
-          "Accept": "application/json"
-        }
-      });
+    const newOrder = [...pubs];
+    const [movedItem] = newOrder.splice(currentIndex, 1);
+    newOrder.splice(targetIndex, 0, movedItem);
 
-      if (!worksRes.ok) throw new Error("Failed to fetch works list from ORCID. Ensure your ORCID iD is correct.");
-      const worksData = await worksRes.json();
+    setPubs(newOrder);
 
-      const groups = worksData.group || [];
-      const putCodes = groups
-        .map((g: any) => g["work-summary"]?.[0]?.["put-code"])
-        .filter(Boolean);
+    const newMap: Record<string, number> = {};
+    newOrder.forEach((p, i) => {
+      newMap[p.id] = i + 1;
+    });
 
-      const existingTitles = new Set(pubs.map((p) => normalizePublicationTitle(p.title)));
-      const newPubsToImport = [];
-
-      // Fetch works details in chunks of 50
-      const batchSize = 50;
-      const fetchedBulk: any[] = [];
-      for (let i = 0; i < putCodes.length; i += batchSize) {
-        const chunk = putCodes.slice(i, i + batchSize);
-        const batchRes = await fetch(`https://pub.orcid.org/v3.0/${orcidId.trim()}/works/${chunk.join(',')}`, {
-          headers: {
-            "Accept": "application/json"
-          }
-        });
-        if (batchRes.ok) {
-          const batchData = await batchRes.json();
-          if (batchData.bulk) {
-            fetchedBulk.push(...batchData.bulk);
-          }
-        }
-      }
-
-      for (const bulkItem of fetchedBulk) {
-        const work = bulkItem.work;
-        if (!work) continue;
-
-        const title = work.title?.title?.value || "Untitled";
-        const cleanedTitle = normalizePublicationTitle(title);
-        if (existingTitles.has(cleanedTitle)) continue;
-
-        const year = work["publication-date"]?.year?.value || new Date().getFullYear().toString();
-        const venue = work["journal-title"]?.value || "";
-        const link = work.url?.value || (work["external-ids"]?.["external-id"]?.[0]?.["external-id-url"]?.value) || "";
-        
-        // Parse authors from contributors list
-        const contributorList = work.contributors?.contributor || [];
-        const authorsList = contributorList
-          .map((c: any) => c["credit-name"]?.value)
-          .filter(Boolean);
-        const authors = authorsList.length > 0 ? authorsList.join(", ") : "Aman Sharma";
-
-        newPubsToImport.push({
-          title,
-          year,
-          venue,
-          link,
-          authors,
-          summary: ""
-        });
-
-        existingTitles.add(cleanedTitle); // avoid duplicates in the same session
-      }
-
-      if (newPubsToImport.length > 0) {
-        const { error } = await db.from('publications').insert(newPubsToImport);
-        if (error) throw error;
-        alert(`Successfully imported ${newPubsToImport.length} new publications from ORCID!`);
-      } else {
-        alert("Import complete: No new publications found. All works are already up-to-date!");
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(`ORCID Import Error: ${err.message}`);
-    } finally {
-      setImporting(false);
-      await fetchPubs();
-    }
+    setPubOrderMap(newMap);
+    await db.from('general_settings').update({ seoKeywords: JSON.stringify(newMap) }).eq('id', 'settings');
   };
 
   return (
@@ -1766,7 +1733,7 @@ const PublicationsEditor = () => {
                 {pubs.length} Total
               </span>
             </div>
-            <p className="text-academic-muted text-sm mt-1">Manage publications or import from Google Scholar/ORCID.</p>
+            <p className="text-academic-muted text-sm mt-1">Manage publications or import from Google Scholar/BibTeX. Use the Display Order dropdown to arrange papers like photos.</p>
           </div>
           
           <div className="flex w-full flex-col sm:flex-row gap-4 md:w-auto">
@@ -1806,26 +1773,7 @@ const PublicationsEditor = () => {
               </button>
             </div>
 
-            {/* ORCID Import */}
-            <div className="w-full bg-academic-surface p-3 rounded-lg border border-academic-brand/20 flex flex-col items-center sm:w-auto">
-              <span className="text-xs font-bold text-academic-brand uppercase tracking-wider mb-2">ORCID Auto-Import</span>
-              <div className="flex flex-col gap-2 w-full sm:max-w-[200px]">
-                <input
-                  type="text"
-                  placeholder="Your ORCID iD"
-                  value={orcidId}
-                  onChange={(e) => setOrcidId(e.target.value)}
-                  className="p-2 text-sm border border-academic-border rounded focus:outline-none focus:border-academic-brand"
-                />
-                <button
-                  onClick={handleOrcidImport}
-                  disabled={importing}
-                  className="flex justify-center items-center bg-academic-brand text-white border border-academic-brand px-4 py-2 rounded hover:bg-academic-brand/90 transition shadow-sm font-medium text-sm disabled:opacity-50"
-                >
-                  {importing ? <Loader /> : "Sync from ORCID"}
-                </button>
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -1853,11 +1801,30 @@ const PublicationsEditor = () => {
         </div>
 
         <div className="space-y-4">
-          {pubs.map((p) => (
+          {pubs.map((p, index) => (
             <div key={p.id} className="border border-academic-border p-5 rounded-xl bg-white shadow-sm transition-all hover:border-academic-brand/30">
               <div className="grid md:grid-cols-12 gap-4">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 space-y-4">
                   <RichTextField value={p.year} onChange={(value) => updatePub(p.id, { year: value })} placeholder="Year" className="font-bold text-xl text-academic-brand" />
+                  <div>
+                    <label className="block text-xs font-bold text-academic-muted mb-1">Display Order</label>
+                    <select
+                      value={index + 1}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) {
+                          reorderPub(index, val);
+                        }
+                      }}
+                      className="w-full p-2 border border-academic-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-academic-brand bg-academic-surface/50 font-medium cursor-pointer"
+                    >
+                      {pubs.map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="md:col-span-10 space-y-2">
                   <RichTextField value={p.title} onChange={(value) => updatePub(p.id, { title: value })} placeholder="Title" className="font-bold text-lg text-academic-accent" />
@@ -1919,7 +1886,19 @@ const MediaGallery = () => {
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
     if (!error && data) {
-      setImages(data);
+      const filteredImages = data.filter((item: any) => {
+        if (!item.caption) return true;
+        try {
+          const parsed = JSON.parse(item.caption);
+          if (parsed && parsed.type === 'student') {
+            return false;
+          }
+          return true;
+        } catch {
+          return true;
+        }
+      });
+      setImages(filteredImages);
     }
   };
 
@@ -2461,6 +2440,7 @@ const TeamEditor = () => {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [achievements, setAchievements] = useState("");
+  const [email, setEmail] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
@@ -2497,6 +2477,7 @@ const TeamEditor = () => {
             name: parsed.name || "",
             role: parsed.role || "",
             achievements: parsed.achievements || "",
+            email: parsed.email || "",
             display_order: item.display_order || 0
           };
         });
@@ -2514,6 +2495,7 @@ const TeamEditor = () => {
     setName("");
     setRole("");
     setAchievements("");
+    setEmail("");
     setPhotoUrl("");
     setSelectedFile(null);
   };
@@ -2570,7 +2552,8 @@ const TeamEditor = () => {
         type: 'student',
         name: name.trim(),
         role: role.trim(),
-        achievements: achievements.trim()
+        achievements: achievements.trim(),
+        email: email.trim()
       };
 
       const captionStr = JSON.stringify(captionObj);
@@ -2615,6 +2598,7 @@ const TeamEditor = () => {
     setName(student.name);
     setRole(student.role);
     setAchievements(student.achievements);
+    setEmail(student.email || "");
     setPhotoUrl(student.url);
     setSelectedFile(null);
   };
@@ -2685,6 +2669,17 @@ const TeamEditor = () => {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 placeholder="e.g. PhD Scholar, Postdoc, Master's Student"
+                className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-academic-muted mb-2">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. student@university.edu"
                 className="w-full p-3 border border-academic-border rounded-lg focus:outline-none focus:ring-2 focus:ring-academic-brand/30 focus:border-academic-brand font-medium text-academic-text"
               />
             </div>

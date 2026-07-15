@@ -91,12 +91,6 @@ export const StartupSection = () => {
                     className="text-academic-muted text-base sm:text-xl leading-relaxed font-sans font-medium whitespace-pre-wrap"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
                   />
-                  {extendedDescription && (
-                    <div
-                      className="mt-6 text-academic-muted text-sm sm:text-base leading-relaxed font-sans whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(extendedDescription) }}
-                    />
-                  )}
                 </div>
               )}
               <ul className="space-y-4 mb-10">
@@ -114,6 +108,13 @@ export const StartupSection = () => {
                   </motion.li>
                 ))}
               </ul>
+              
+              {!loading && extendedDescription && (
+                <div
+                  className="mb-10 text-academic-muted text-sm sm:text-base leading-relaxed font-sans whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(extendedDescription) }}
+                />
+              )}
 
               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
                 {links.map((link: any, idx: number) => (

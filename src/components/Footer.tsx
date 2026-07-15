@@ -34,7 +34,7 @@ const ICON_MAP: Record<string, any> = {
 
 const getIcon = (name: string) => {
   const IconComponent = ICON_MAP[name] || LinkIcon;
-  return <IconComponent size={18} strokeWidth={1.8} />;
+  return <IconComponent size={22} strokeWidth={1.8} />;
 };
 
 
@@ -43,17 +43,17 @@ const SOCIAL_LINKS = [
   {
     label: 'LinkedIn',
     href: 'https://www.linkedin.com/in/amansharmaphd/',
-    icon: <LinkedinIcon size={18} />,
+    icon: <LinkedinIcon size={22} />,
   },
   {
     label: 'Google Scholar',
     href: 'https://scholar.google.com/citations?user=qVwMtGEAAAAJ&hl=en',
-    icon: <GraduationCap size={18} strokeWidth={1.8} />,
+    icon: <GraduationCap size={22} strokeWidth={1.8} />,
   },
   {
     label: 'ORCID',
     href: 'https://orcid.org/0000-0001-5024-292X',
-    icon: <OrcidIcon size={18} />,
+    icon: <OrcidIcon size={22} />,
   },
 ];
 
@@ -133,8 +133,8 @@ export const Footer = () => {
     <footer className="relative z-10 border-t border-academic-border bg-academic-accent text-white font-sans">
       <div className="mx-auto flex flex-col sm:flex-row items-center justify-between max-w-7xl gap-4 px-4 py-4 sm:py-5">
         <div className="text-center sm:text-left">
-          <div className="text-lg sm:text-xl font-serif font-bold leading-none">{displayName}</div>
-          <div className="mt-1.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-xs sm:text-sm text-white/70">
+          <div className="text-2xl sm:text-3xl font-serif font-bold leading-none">{displayName}</div>
+          <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-xs sm:text-sm text-white/70">
             <a
               href="mailto:amansharmaphd@gmail.com"
               target="_blank"

@@ -21,6 +21,7 @@ export const PublicationsSection = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPub, setSelectedPub] = useState<any | null>(null);
   const [orcidUrl, setOrcidUrl] = useState("https://orcid.org/0000-0001-5024-292X");
+  const [pubOrderMap, setPubOrderMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchPublications = async () => {
@@ -30,8 +31,15 @@ export const PublicationsSection = () => {
           .select('*');
         
         if (!error && data) {
-          // Sort by the Google Scholar exact order using publicationOrder.json
+          // Sort by the Google Scholar exact order using publicationOrder.json, and the manual order map
           data.sort((a, b) => {
+            const orderA = pubOrderMap[a.id];
+            const orderB = pubOrderMap[b.id];
+            
+            if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+            if (orderA !== undefined) return -1;
+            if (orderB !== undefined) return 1;
+
             const indexA = publicationOrder.indexOf(a.title);
             const indexB = publicationOrder.indexOf(b.title);
             
@@ -59,14 +67,19 @@ export const PublicationsSection = () => {
       try {
         const { data, error } = await db
           .from('general_settings')
-          .select('contactOrcid')
+          .select('contactOrcid, seoKeywords')
           .eq('id', 'settings')
           .single();
-        if (!error && data && data.contactOrcid) {
-          setOrcidUrl(data.contactOrcid);
+        if (!error && data) {
+          if (data.contactOrcid) setOrcidUrl(data.contactOrcid);
+          if (data.seoKeywords) {
+            try {
+              setPubOrderMap(JSON.parse(data.seoKeywords));
+            } catch (e) {}
+          }
         }
       } catch (err) {
-        console.error("Error fetching orcid from settings:", err);
+        console.error("Error fetching settings:", err);
       }
     };
 
@@ -96,6 +109,11 @@ export const PublicationsSection = () => {
           if (data && data.contactOrcid) {
             setOrcidUrl(data.contactOrcid);
           }
+          if (data && data.seoKeywords) {
+            try {
+              setPubOrderMap(JSON.parse(data.seoKeywords));
+            } catch (e) {}
+          }
         }
       )
       .subscribe();
@@ -119,10 +137,10 @@ export const PublicationsSection = () => {
           >
             <div className="editorial-subheading">Selected Work</div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-academic-accent mb-6 sm:mb-8 leading-tight">
-              Research, Publications & <span className="italic text-academic-brand">Patents</span>
+              Selected <span className="italic text-academic-brand">Publications</span>
             </h2>
             <p className="text-academic-muted text-base sm:text-lg mb-8 sm:mb-10 font-sans font-medium">
-              A comprehensive portfolio of scientific contributions advancing the field of environmental chemistry, functional materials, and patented innovations.
+              A comprehensive portfolio of scientific contributions advancing the field of environmental chemistry and functional materials.
             </p>
             <div className="flex flex-wrap gap-4">
               <a 
@@ -147,13 +165,13 @@ export const PublicationsSection = () => {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 w-full">
-          {/* Publications Column */}
+        <div className="max-w-4xl mx-auto w-full flex flex-col gap-12 lg:gap-16">
+          {/* Publications Section */}
           <div>
             <h3 className="text-2xl font-serif font-bold text-academic-accent mb-6 pb-3 border-b border-academic-border flex items-center gap-3">
                <FileText className="text-academic-brand" size={24} /> Publications
             </h3>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col">
               {loading ? (
                 <div className="py-12 text-center text-academic-muted">Loading publications...</div>
               ) : publicationsData.filter(p => !p.venue?.toLowerCase().includes("patent")).length > 0 ? (
@@ -163,46 +181,27 @@ export const PublicationsSection = () => {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: Math.min(idx * 0.05, 0.5) }}
-                    className="editorial-card min-w-0 p-5 sm:p-6 group flex flex-col h-full"
+                    transition={{ duration: 0.5, delay: Math.min(idx * 0.05, 0.3) }}
+                    className="flex gap-4 sm:gap-6 py-5 border-b border-academic-border/50 group last:border-0"
                   >
-                    <div className="min-w-0 flex flex-col flex-1 h-full">
+                    <div className="text-academic-brand font-serif font-bold text-lg min-w-[24px] pt-0.5">
+                      {idx + 1}.
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <button onClick={() => setSelectedPub(pub)} className="block text-left w-full focus:outline-none cursor-pointer">
                         <h4
-                          className="text-lg font-serif font-bold text-academic-accent mb-2 group-hover:text-academic-brand transition-colors duration-500 leading-snug break-words"
+                          className="text-base sm:text-lg font-serif font-bold text-academic-accent group-hover:text-academic-brand transition-colors duration-300 leading-snug break-words"
                           dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.title) }}
                         />
                       </button>
                       <p
-                        className="text-sm text-academic-muted font-sans font-medium mb-3 leading-relaxed break-words flex-1"
+                        className="text-sm text-academic-muted font-sans mt-1.5 leading-relaxed break-words"
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.authors) }}
                       />
-                      <div className="flex flex-col gap-2 pt-3 border-t border-academic-border text-xs text-academic-muted font-sans uppercase tracking-wider mt-auto">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {pub.venue?.toLowerCase().includes("chemistry") && pub.venue?.toLowerCase().includes("european journal") && (
-                            <img 
-                              src="https://chemistry-europe.onlinelibrary.wiley.com/cover/15213765" 
-                              alt="Chemistry – A European Journal Logo" 
-                              className="w-5 h-7 object-contain border border-academic-border bg-white flex-shrink-0"
-                            />
-                          )}
-                          <span
-                            className="min-w-0 italic leading-relaxed break-words"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.venue) }}
-                          />
-                        </div>
-                        <span
-                          className="font-semibold text-academic-accent flex-shrink-0 border border-academic-border px-2 py-0.5 bg-academic-surface self-start mt-1"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.year) }}
-                        />
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-academic-muted font-sans">
+                        <span className="italic" dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.venue) }} />
+                        <span className="font-semibold text-academic-accent" dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.year) }} />
                       </div>
-                      <button
-                        onClick={() => setSelectedPub(pub)}
-                        className="mt-4 inline-flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-wider text-academic-accent hover:text-academic-brand transition-colors duration-500 group/link cursor-pointer"
-                      >
-                        View Details
-                        <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform duration-500" />
-                      </button>
                     </div>
                   </motion.div>
                 ))
@@ -212,12 +211,12 @@ export const PublicationsSection = () => {
             </div>
           </div>
 
-          {/* Patents Column */}
-          <div>
+          {/* Patents Section */}
+          <div className={publicationsData.filter(p => p.venue?.toLowerCase().includes("patent")).length > 0 ? "block" : "hidden"}>
             <h3 className="text-2xl font-serif font-bold text-academic-accent mb-6 pb-3 border-b border-academic-border flex items-center gap-3">
                <FileText className="text-academic-brand" size={24} /> Patents
             </h3>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col">
               {loading ? (
                 <div className="py-12 text-center text-academic-muted">Loading patents...</div>
               ) : publicationsData.filter(p => p.venue?.toLowerCase().includes("patent")).length > 0 ? (
@@ -227,39 +226,27 @@ export const PublicationsSection = () => {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: Math.min(idx * 0.05, 0.5) }}
-                    className="editorial-card min-w-0 p-5 sm:p-6 group flex flex-col h-full bg-academic-surface/30"
+                    transition={{ duration: 0.5, delay: Math.min(idx * 0.05, 0.3) }}
+                    className="flex gap-4 sm:gap-6 py-5 border-b border-academic-border/50 group last:border-0"
                   >
-                    <div className="min-w-0 flex flex-col flex-1 h-full">
+                    <div className="text-academic-brand font-serif font-bold text-lg min-w-[24px] pt-0.5">
+                      {idx + 1}.
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <button onClick={() => setSelectedPub(pub)} className="block text-left w-full focus:outline-none cursor-pointer">
                         <h4
-                          className="text-lg font-serif font-bold text-academic-accent mb-2 group-hover:text-academic-brand transition-colors duration-500 leading-snug break-words"
+                          className="text-base sm:text-lg font-serif font-bold text-academic-accent group-hover:text-academic-brand transition-colors duration-300 leading-snug break-words"
                           dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.title) }}
                         />
                       </button>
                       <p
-                        className="text-sm text-academic-muted font-sans font-medium mb-3 leading-relaxed break-words flex-1"
+                        className="text-sm text-academic-muted font-sans mt-1.5 leading-relaxed break-words"
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.authors) }}
                       />
-                      <div className="flex flex-col gap-2 pt-3 border-t border-academic-border text-xs text-academic-muted font-sans uppercase tracking-wider mt-auto">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span
-                            className="min-w-0 font-bold text-academic-brand leading-relaxed break-words"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.venue) }}
-                          />
-                        </div>
-                        <span
-                          className="font-semibold text-academic-accent flex-shrink-0 border border-academic-border px-2 py-0.5 bg-academic-surface self-start mt-1"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.year) }}
-                        />
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-academic-muted font-sans">
+                        <span className="italic font-bold text-academic-brand" dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.venue) }} />
+                        <span className="font-semibold text-academic-accent" dangerouslySetInnerHTML={{ __html: sanitizeHtml(pub.year) }} />
                       </div>
-                      <button
-                        onClick={() => setSelectedPub(pub)}
-                        className="mt-4 inline-flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-wider text-academic-accent hover:text-academic-brand transition-colors duration-500 group/link cursor-pointer"
-                      >
-                        View Details
-                        <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform duration-500" />
-                      </button>
                     </div>
                   </motion.div>
                 ))
