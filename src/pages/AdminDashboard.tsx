@@ -3,7 +3,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { auth, db, storage } from "../lib/supabase";
 import publicationOrder from "../data/publicationOrder.json";
 import type { User } from "@supabase/supabase-js";
-import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff, ChevronLeft, ChevronRight, GraduationCap, Pencil, RefreshCw } from "lucide-react";
+import { Trash2, Plus, Save, Upload, LogOut, Image, FileUp, Bold, Italic, Palette, KeyRound, Eye, EyeOff, ChevronLeft, ChevronRight, GraduationCap, Pencil, RefreshCw, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
 
 const getPhotosStoragePath = (url: string) => {
   try {
@@ -1170,6 +1170,22 @@ setSaving(true);
     setFeatures(features.filter((_, i) => i !== index));
   };
 
+  const moveFeature = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index > 0) {
+      const newFeatures = [...features];
+      const temp = newFeatures[index];
+      newFeatures[index] = newFeatures[index - 1];
+      newFeatures[index - 1] = temp;
+      setFeatures(newFeatures);
+    } else if (direction === 'down' && index < features.length - 1) {
+      const newFeatures = [...features];
+      const temp = newFeatures[index];
+      newFeatures[index] = newFeatures[index + 1];
+      newFeatures[index + 1] = temp;
+      setFeatures(newFeatures);
+    }
+  };
+
   const addAgency = () => {
     if (!newAgency.name.trim()) return;
     setAgencies([...agencies, { id: `${Date.now()}`, ...newAgency }]);
@@ -1255,15 +1271,36 @@ setSaving(true);
         <ul className="space-y-3 mb-8">
           {features.map((feature, idx) => (
             <li key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white border border-academic-border p-4 rounded-xl shadow-sm">
-              <input 
-                type="text" 
-                value={feature} 
-                onChange={(e) => updateFeature(idx, e.target.value)}
-                className="flex-1 font-bold text-academic-accent mr-2 bg-transparent border-b border-transparent hover:border-academic-border focus:border-academic-brand focus:outline-none px-2 py-1" 
-              />
-              <button onClick={() => deleteFeature(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Delete Feature">
-                <Trash2 size={18} />
-              </button>
+              <div className="flex-1 flex items-center gap-3 sm:gap-4 font-sans text-sm sm:text-base tracking-wide uppercase">
+                <CheckCircle2 className="text-academic-brand flex-shrink-0" size={16} strokeWidth={1.5} />
+                <input 
+                  type="text" 
+                  value={feature} 
+                  onChange={(e) => updateFeature(idx, e.target.value)}
+                  className="w-full font-bold text-academic-accent bg-transparent border-b border-transparent hover:border-academic-border focus:border-academic-brand focus:outline-none py-1" 
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => moveFeature(idx, 'up')} 
+                  disabled={idx === 0}
+                  className={`p-2 rounded-lg transition-colors ${idx === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-academic-muted hover:bg-academic-bg'}`} 
+                  title="Move Up"
+                >
+                  <ChevronUp size={18} />
+                </button>
+                <button 
+                  onClick={() => moveFeature(idx, 'down')} 
+                  disabled={idx === features.length - 1}
+                  className={`p-2 rounded-lg transition-colors ${idx === features.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-academic-muted hover:bg-academic-bg'}`} 
+                  title="Move Down"
+                >
+                  <ChevronDown size={18} />
+                </button>
+                <button onClick={() => deleteFeature(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2" title="Delete Feature">
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
