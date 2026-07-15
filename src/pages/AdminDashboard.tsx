@@ -1415,7 +1415,6 @@ interface Publication {
 
 const PublicationsEditor = () => {
   const [pubs, setPubs] = useState<Publication[]>([]);
-  const [pubOrderMap, setPubOrderMap] = useState<Record<string, number>>({});
   const [newPub, setNewPub] = useState<Omit<Publication, "id">>({ title: "", link: "", authors: "", venue: "", year: "", summary: "" });
   const [importing, setImporting] = useState(false);
   const [deletingPubIds, setDeletingPubIds] = useState<Set<string>>(new Set());

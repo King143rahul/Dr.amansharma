@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ExternalLink, FileText, X } from 'lucide-react';
+import { ExternalLink, FileText, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../lib/supabase';

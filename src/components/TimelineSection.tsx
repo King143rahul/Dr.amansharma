@@ -31,15 +31,6 @@ const DEFAULT_TIMELINE = [
   }
 ];
 
-const getIcon = (iconName: string) => {
-  switch (iconName) {
-    case 'Rocket': return <Rocket size={24} className="text-academic-accent" />;
-    case 'Microscope': return <Microscope size={24} className="text-academic-accent" />;
-    case 'GraduationCap': return <GraduationCap size={24} className="text-academic-accent" />;
-    default: return <Calendar size={24} className="text-academic-accent" />;
-  }
-};
-
 export const TimelineSection = () => {
   const [timelineData, setTimelineData] = useState<any[]>(DEFAULT_TIMELINE);
 
