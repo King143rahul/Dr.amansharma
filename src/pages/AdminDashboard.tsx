@@ -1196,6 +1196,22 @@ setSaving(true);
     setAgencies(agencies.filter((a) => a.id !== id));
   };
 
+  const moveAgency = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index > 0) {
+      const newAgencies = [...agencies];
+      const temp = newAgencies[index];
+      newAgencies[index] = newAgencies[index - 1];
+      newAgencies[index - 1] = temp;
+      setAgencies(newAgencies);
+    } else if (direction === 'down' && index < agencies.length - 1) {
+      const newAgencies = [...agencies];
+      const temp = newAgencies[index];
+      newAgencies[index] = newAgencies[index + 1];
+      newAgencies[index + 1] = temp;
+      setAgencies(newAgencies);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="editorial-card p-5 sm:p-8 rounded-2xl">
@@ -1392,9 +1408,27 @@ setSaving(true);
                   {a.logoUrl && <span className="break-all text-academic-muted text-sm">{a.logoUrl}</span>}
                 </div>
               </div>
-              <button onClick={() => deleteAgency(a.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                <Trash2 size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => moveAgency(agencies.findIndex(ag => ag.id === a.id), 'up')} 
+                  disabled={agencies.findIndex(ag => ag.id === a.id) === 0}
+                  className={`p-2 rounded-lg transition-colors ${agencies.findIndex(ag => ag.id === a.id) === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-academic-muted hover:bg-academic-bg'}`} 
+                  title="Move Up"
+                >
+                  <ChevronUp size={18} />
+                </button>
+                <button 
+                  onClick={() => moveAgency(agencies.findIndex(ag => ag.id === a.id), 'down')} 
+                  disabled={agencies.findIndex(ag => ag.id === a.id) === agencies.length - 1}
+                  className={`p-2 rounded-lg transition-colors ${agencies.findIndex(ag => ag.id === a.id) === agencies.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-academic-muted hover:bg-academic-bg'}`} 
+                  title="Move Down"
+                >
+                  <ChevronDown size={18} />
+                </button>
+                <button onClick={() => deleteAgency(a.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2" title="Delete Agency">
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
